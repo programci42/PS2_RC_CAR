@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 1 — Safe Electronics Design</title>
+<style>
+:root{
+  --bg:#ffffff; --ink:#1f2933; --muted:#5c6b7a; --line:#dde3ea;
+  --soft:#f5f7fa; --accent:#0f766e; --accent-soft:#e6f4f1;
+  --warn:#a15c07; --warn-soft:#fdf6e7; --code-bg:#1e2430; --code-ink:#e6edf3;
+  --danger:#b42318; --danger-soft:#fdeceb; --ok:#15803d; --ok-soft:#e7f5ec;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#12161c; --ink:#e6edf3; --muted:#9aa7b4; --line:#2a323d;
+    --soft:#1a2029; --accent:#5eead4; --accent-soft:#14302c;
+    --warn:#fbbf24; --warn-soft:#2e2410; --code-bg:#0c1017; --code-ink:#e6edf3;
+    --danger:#f87171; --danger-soft:#2d1514; --ok:#4ade80; --ok-soft:#122a1a;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.65 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:900px;margin:0 auto;padding:36px 22px 80px}
+h1{font-size:29px;line-height:1.2;margin:0 0 6px}
+h2{font-size:22px;margin:48px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+h3{font-size:17px;margin:26px 0 8px}
+h4{font-size:15px;margin:18px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+p{margin:11px 0}
+.lead{color:var(--muted);font-size:17px;margin:0 0 22px}
+code{font-family:Consolas,"SF Mono",Menlo,monospace;font-size:.88em;
+  background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+pre{background:var(--code-bg);color:var(--code-ink);padding:16px;border-radius:8px;
+  overflow-x:auto;font-family:Consolas,monospace;font-size:13px;line-height:1.6}
+pre code{background:none;border:none;padding:0;color:inherit}
+.flow{font-family:Consolas,monospace;font-size:12.5px;line-height:1.75;
+  background:var(--code-bg);color:var(--code-ink);padding:18px;border-radius:8px;
+  overflow-x:auto;white-space:pre}
+.note,.warn,.danger,.ok{border-left:4px solid var(--accent);background:var(--accent-soft);
+  padding:12px 16px;border-radius:0 6px 6px 0;margin:16px 0}
+.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.danger{border-left-color:var(--danger);background:var(--danger-soft)}
+.ok{border-left-color:var(--ok);background:var(--ok-soft)}
+.note p:first-child,.warn p:first-child,.danger p:first-child,.ok p:first-child{margin-top:0}
+.note p:last-child,.warn p:last-child,.danger p:last-child,.ok p:last-child{margin-bottom:0}
+.danger strong:first-child{color:var(--danger)}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14.5px}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+.scroll{overflow-x:auto}
+.scroll table{min-width:520px}
+ul,ol{padding-left:22px;margin:10px 0}
+li{margin:6px 0}
+.toc{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:16px 20px;margin:24px 0}
+.toc ol{margin:6px 0 0}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.step{border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:12px 0;background:var(--soft)}
+.step-n{display:inline-block;font-weight:800;font-size:12px;letter-spacing:.07em;
+  background:var(--accent);color:var(--bg);padding:3px 9px;border-radius:20px;margin-bottom:6px}
+@media (prefers-color-scheme: dark){.step-n{color:#0c1017}}
+.chk{list-style:none;padding-left:0}
+.chk li{padding-left:26px;position:relative}
+.chk li::before{content:"☐";position:absolute;left:4px;font-size:17px;color:var(--muted)}
+footer{margin-top:52px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<main>
+
+<h1>Phase 1 — Safe Electronics Design</h1>
+<p class="lead">
+The electrical side of running a PS2 Slim from a battery and turning it into a 4-motor vehicle:
+power architecture, fusing, wiring and <strong>the order in which to test</strong>.
+This document was written to stay open on the bench beside you.
+</p>
+
+<div class="danger">
+<p><strong>What happens if this phase goes wrong:</strong> the PS2 dies permanently (wrong voltage),
+a cable fire starts (unfused short circuit) or the battery catches fire (punctured / over-discharged LiPo).
+The test order below is not advice, it is <strong>the order that must be followed</strong>.</p>
+</div>
+
+<div class="toc">
+<strong>Contents</strong>
+<ol>
+  <li><a href="#mimari">Power architecture</a></li>
+  <li><a href="#sigorta">Fuses — glass or blade, and how to wire them</a></li>
+  <li><a href="#hesap">Current calculation and fuse ratings</a></li>
+  <li><a href="#kablo">Cable selection</a></li>
+  <li><a href="#buck">Setting up the buck regulator</a></li>
+  <li><a href="#batarya">Battery choice and protection</a></li>
+  <li><a href="#motor">Motor wiring and relay contacts</a></li>
+  <li><a href="#montaj">Assembly order and test protocol</a></li>
+  <li><a href="#liste">Shopping list</a></li>
+</ol>
+</div>
+
+<h2 id="mimari">1. Power architecture</h2>
+
+<div class="flow">        [ 12.8V LiFePO4 battery ]
+                 |
+                 | first thing on the (+) terminal:
+                 |
+          [ MAIN FUSE 20A ]     &lt;-- 10-15 cm from the battery
+                 |
+          [ MAIN SWITCH ]       &lt;-- the one switch that cuts everything
+                 |
+         +-------+-------------------------+
+         |                                 |
+   [FUSE 5A]                         [FUSE 15A]
+         |                                 |
+   [XL4016 buck]                    [relay contacts]
+    output 8.50V                           |
+         |                            [4 DC motors]
+   [PS2 Slim DC input]
+         |
+   [USB] --&gt; relay board (data + board logic only)
+         |
+   [5V buck] --&gt; GL.iNet Mango (WiFi bridge, Phase 2)
+
+  GND: common, since there is one battery. Use a star topology —
+       every GND return meets at a single point on the battery (-) terminal.</div>
+
+<h3>Why two separate branches?</h3>
+<div class="scroll">
+<table>
+<tr><th>Branch</th><th>Feeds</th><th>Why separate</th></tr>
+<tr><td><strong>PS2 branch</strong></td><td>PS2 Slim + relay board logic + WiFi bridge</td>
+<td>The PS2 wants a clean, stable 8.5 V. Motor noise or a sudden voltage dip locks up the console.</td></tr>
+<tr><td><strong>Load branch</strong></td><td>4 DC motors (later fans, lamps)</td>
+<td>Motors draw 5–8× their normal current at start-up. That surge must not reach the PS2 branch.</td></tr>
+</table>
+</div>
+
+<div class="note">
+<p><strong>One battery or two?</strong> One battery + two fused branches <em>is enough</em>.
+The truly critical parameter is not a separate battery but the <strong>buck regulator's input margin</strong>.</p>
+<p>Converting 12.8 V LiFePO4 → 8.5 V you have ~4 V of margin. Even if the battery voltage dips
+0.3–0.5 V when a motor starts, the buck absorbs it and the output stays fixed at 8.50 V. With a
+margin that wide there is no reason to spend money and weight on a second battery.</p>
+<p>A second battery becomes <em>mandatory</em> only when the margin is narrow. For example, a 3S LiPo
+(9.9 V when empty) with a cheap LM2596 — the regulator's ~2 V dropout eats the margin and the PS2
+resets the moment a motor starts. <strong>The problem is margin, not the number of batteries.</strong></p>
+</div>
+
+<h2 id="sigorta">2. Fuses — glass or blade, and how to wire them</h2>
+
+<h3>What a fuse is for (a common misunderstanding)</h3>
+<p>
+A fuse <strong>protects the cable, not the device.</strong> Its purpose is to stop the cable glowing
+and starting a fire during a short circuit. What protects the PS2 is not the fuse but a correctly
+set buck regulator.
+</p>
+
+<h3>Can glass fuses be used?</h3>
+<p>
+They can, but <strong>I do not recommend them on the motor branch</strong>. The reason is technical and matters:
+</p>
+
+<h4>Breaking capacity</h4>
+<p>
+When a fuse blows, the wire inside vaporises. But if the current is very high, an
+<strong>arc keeps jumping</strong> through the ionised gas of the vaporised metal. As long as the
+battery keeps feeding the arc the fuse has not really opened — the glass shatters, the arc
+continues, no protection happens.
+</p>
+
+<div class="scroll">
+<table>
+<tr><th>Fuse type</th><th>Breaking capacity</th><th>How the arc is quenched</th><th>In this project</th></tr>
+<tr><td>5×20 <strong>glass</strong></td><td>~35 A</td><td>Nothing to quench it — the glass is empty</td><td>Low-current branch only</td></tr>
+<tr><td>5×20 <strong>ceramic</strong> (sand-filled)</td><td>~1500 A</td><td>Sand smothers the arc</td><td>✅ Good</td></tr>
+<tr><td><strong>Blade fuse</strong> (automotive ATO/ATC)</td><td>~1000 A, 32 V DC</td><td>Designed for DC</td><td>✅ Best fit</td></tr>
+</table>
+</div>
+
+<p>
+For comparison: a 12 V 7 Ah battery or a 12 Ah LiFePO4 can deliver <strong>100–250 A</strong>
+into a dead short. That is far above the breaking capacity of a cheap glass fuse.
+</p>
+
+<div class="ok">
+<p><strong>Practical solution — keep the glass holder and stay safe:</strong>
+ceramic fuses have <strong>the same 5×20 mm size as glass fuses and fit the same holder</strong>.
+If you already have a glass fuse holder, keep it; fit a <strong>ceramic (sand-filled)</strong>
+fuse instead of glass. The only visible difference is the white/grey ceramic body.</p>
+</div>
+
+<p>
+Still, for the main fuse and the motor branch my preference is a <strong>blade fuse</strong>.
+Being automotive it is designed for exactly this job: 32 V DC, high breaking capacity, cheap
+holders, easy to find, and the colour code tells you the rating at a glance.
+</p>
+
+<h3>How to wire a fuse</h3>
+
+<div class="flow">CORRECT:
+  Battery (+) ──[10-15 cm]──[FUSE]──[SWITCH]──[load]
+  Battery (−) ───────────────────────────────── [load]
+
+WRONG:
+  Battery (+) ──────[long cable]──────[FUSE]──[load]
+                     ^^^^^^^^^^^^
+                     this section is UNPROTECTED — if it rubs
+                     on the chassis and shorts, the fuse is not in the circuit
+
+WRONG:
+  Battery (−) ──[FUSE]──  ←  NO fuse in the negative line</div>
+
+<h4>Rules</h4>
+<ol>
+<li><strong>In the positive (+) line, in series.</strong> Never fuse the negative line.</li>
+<li><strong>As close to the battery as possible</strong> — ideally 10–15 cm. The cable between the
+battery and the fuse is unprotected; the shorter that section, the smaller the risk.</li>
+<li><strong>Order: Battery → Fuse → Switch → Load.</strong> The fuse comes first so that the switch
+itself and the cable to it are also protected.</li>
+<li><strong>Each branch gets its own fuse.</strong> Main fuse + branch fuses are used together: a small
+fault blows only that branch, the whole system does not die.</li>
+<li><strong>Holder connections must be tight.</strong> A loose or badly crimped terminal heats up — then
+it is the holder that melts, not the fuse. Use a crimping tool; do not tin the wire with solder and
+push it into the holder (solder cracks under vibration).</li>
+<li><strong>Never up-rate a blowing fuse.</strong> A blowing fuse is information, not a problem. Find the
+cause first. Wrapping wire or foil around it is deadly.</li>
+</ol>
+
+<h4>Holder types</h4>
+<div class="scroll">
+<table>
+<tr><th>Type</th><th>Where to use</th></tr>
+<tr><td><strong>In-line</strong></td><td>Cable at both ends, sits in the middle of the line. The most practical for you.</td></tr>
+<tr><td><strong>Panel mount</strong></td><td>Screws onto a box/panel, replaced from outside by twisting. Neat but not required.</td></tr>
+<tr><td><strong>Fuse box</strong></td><td>One hub for multiple branches. Makes life much easier with 2–3 branches.</td></tr>
+</table>
+</div>
+
+<h4>What the letters on a glass/ceramic fuse mean</h4>
+<p>
+The metal cap carries a marking such as <code>T5AL250V</code>:
+</p>
+<ul>
+<li><strong>F</strong> = fast — for electronic circuits</li>
+<li><strong>T</strong> = time-delay — for loads with inrush current. <strong>This is the one you need.</strong></li>
+<li><strong>M</strong> = medium</li>
+</ul>
+<p>
+The buck regulator's input capacitors draw a short but hard surge when first connected. A fast (F)
+fuse mistakes this for a fault and blows on every power-up. <strong>Use the time-delay (T) type.</strong>
+</p>
+<p>
+Blade fuses have no such distinction — by construction they are already slightly slow.
+</p>
+
+<h2 id="hesap">3. Current calculation and fuse ratings</h2>
+
+<h3>Method</h3>
+<pre><code>Fuse rating ≈ 1.5 × (normal maximum current of that branch)
+
+then:
+  → round up to the next standard value
+  → must NOT exceed the cable's current capacity</code></pre>
+
+<h3>PS2 branch</h3>
+<div class="scroll">
+<table>
+<tr><th>Step</th><th>Calculation</th><th>Result</th></tr>
+<tr><td>PS2 consumption (no disc spinning, homebrew)</td><td>to be measured, estimate</td><td>~15–25 W</td></tr>
+<tr><td>Buck efficiency</td><td>÷ 0.87</td><td>~29 W input</td></tr>
+<tr><td>Battery-side current</td><td>29 W ÷ 12.8 V</td><td><strong>~2.3 A</strong></td></tr>
+<tr><td>Fuse</td><td>2.3 × 1.5 ≈ 3.5 → round up</td><td><strong>5 A time-delay</strong></td></tr>
+</table>
+</div>
+<p>
+The 7.5 A in the report is also acceptable and is a standard blade fuse value; it merely gives
+slightly looser protection. If your cable carries 7.5 A there is no problem.
+</p>
+
+<div class="warn">
+<p><strong>Measure the PS2's real consumption.</strong> The 15–25 W above is an estimate.
+Put an ammeter (or a panel volt/ammeter) in series with the battery line and read it while
+<code>role.elf</code> is running. This single measurement pins down both the fuse rating and the
+run-time calculation. The 5.65 A on the adapter label is <em>maximum capacity</em>, not actual consumption.</p>
+</div>
+
+<h3>Motor branch</h3>
+<p>
+This branch's value <strong>depends entirely on your motors</strong> and cannot be calculated without measuring.
+Method:
+</p>
+<ol>
+<li>Power one motor and measure its <strong>no-load current</strong> (spinning freely)</li>
+<li>Hold the shaft still by hand and measure the <strong>stall (locked-rotor) current</strong> — the worst case</li>
+<li>Normal driving current ≈ 2–3× the no-load current (load and ramps)</li>
+<li>Multiply by how many motors run at the same time</li>
+</ol>
+
+<div class="scroll">
+<table>
+<tr><th>Typical small geared DC motor</th><th>Value</th></tr>
+<tr><td>No-load current</td><td>0.1–0.3 A</td></tr>
+<tr><td>Under load</td><td>0.5–1.5 A</td></tr>
+<tr><td>Stall current</td><td>2–4 A</td></tr>
+<tr><td>4 motors, under load</td><td>~2–6 A</td></tr>
+<tr><td>4 motors, all stalled</td><td>8–16 A</td></tr>
+</table>
+</div>
+<p>
+With these values a <strong>15 A blade fuse</strong> is a reasonable start: it does not blow in normal
+driving, and it blows in a real lock-up (jammed wheel, seized motor). Which is exactly what you want.
+</p>
+
+<h4>Blade fuse colour codes</h4>
+<div class="scroll">
+<table>
+<tr><th>Colour</th><th>Rating</th><th>In this project</th></tr>
+<tr><td>Tan / light brown</td><td>5 A</td><td>PS2 branch</td></tr>
+<tr><td>Brown</td><td>7.5 A</td><td>PS2 branch (alternative)</td></tr>
+<tr><td>Red</td><td>10 A</td><td>—</td></tr>
+<tr><td>Blue</td><td>15 A</td><td>Motor branch</td></tr>
+<tr><td>Yellow</td><td>20 A</td><td>Main fuse</td></tr>
+<tr><td>Green</td><td>30 A</td><td>—</td></tr>
+</table>
+</div>
+
+<h2 id="kablo">4. Cable selection</h2>
+
+<div class="scroll">
+<table>
+<tr><th>Line</th><th>Current</th><th>Cross-section</th><th>Note</th></tr>
+<tr><td>Battery → main fuse → switch</td><td>~20 A</td><td><strong>4.0 mm²</strong> (~11 AWG)</td><td>Short and thick</td></tr>
+<tr><td>Motor branch</td><td>~15 A</td><td><strong>2.5 mm²</strong> (~13 AWG)</td><td>Must carry the start-up current</td></tr>
+<tr><td>PS2 branch (battery → buck)</td><td>~3 A</td><td><strong>1.0 mm²</strong> (~17 AWG)</td><td></td></tr>
+<tr><td>Buck → PS2 DC jack</td><td>~3 A</td><td><strong>1.0 mm²</strong></td><td></td></tr>
+<tr><td>WiFi bridge 5 V</td><td>~0.3 A</td><td>0.5 mm²</td><td></td></tr>
+</table>
+</div>
+
+<div class="warn">
+<p><strong>Do not use solid-core cable in a moving vehicle.</strong>
+Vibration fatigues the metal and the cable eventually breaks invisibly inside its insulation —
+a very hard fault to find.</p>
+<p>Use: <strong>silicone-insulated, fine-stranded cable.</strong> Flexible, heat-resistant and
+vibration-tolerant. Plentiful at RC/drone suppliers.</p>
+</div>
+
+<h4>Wiring discipline</h4>
+<ul>
+<li>Positive lines <strong>red</strong>, negative lines <strong>black</strong>. No exceptions.</li>
+<li>All connections <strong>crimped</strong>; if needed add heat-shrink over them, not solder.</li>
+<li>Keep cables away from wheels, gears and the PS2's <strong>fan intake</strong>.</li>
+<li>Give every cable bundle <strong>strain relief</strong> — the pull must land on a clamp, not on the solder/crimp joint.</li>
+<li>Use <strong>XT60</strong> (power) and <strong>XT30</strong> (branches) connectors. They are polarised and cannot be reversed.</li>
+</ul>
+
+<h2 id="buck">5. Setting up the buck regulator</h2>
+
+<p>
+The <strong>XL4016</strong> chosen in the report is right: 4–40 V input, adjustable output, 8 A class.
+</p>
+
+<div class="warn">
+<p><strong>Do not trust the amp rating printed on cheap modules.</strong> A module labelled "8A"
+heats up and goes into protection at 3–4 A without a heatsink and airflow.
+You will draw ~3 A, so an 8 A class module is the right choice — but <strong>fit the heatsink</strong>
+and mount it where air can reach it.</p>
+</div>
+
+<h3>Setting the output voltage — the order is critical</h3>
+
+<div class="step">
+<span class="step-n">STEP 1</span>
+<p><strong>First measure the original adapter's polarity.</strong> Do not assume which contact of the
+PS2 DC jack is (+) — plug in the original adapter, measure the inner and outer contacts with a
+multimeter, write it down. You will wire the buck output accordingly.</p>
+</div>
+
+<div class="step">
+<span class="step-n">STEP 2</span>
+<p><strong>Connect the buck to the battery with NOTHING on its output.</strong> The PS2 must absolutely not be connected.</p>
+</div>
+
+<div class="step">
+<span class="step-n">STEP 3</span>
+<p><strong>Put the multimeter on the buck output and turn the potentiometer slowly.</strong>
+Most modules have a multi-turn trimpot; you may need several turns.
+Target: <strong>8.50 V</strong>. Take your time, turn slowly.</p>
+</div>
+
+<div class="step">
+<span class="step-n">STEP 4</span>
+<p><strong>Test with a dummy load.</strong> Connect a 12 V car bulb (or a power resistor) to the output.
+Does the voltage hold at 8.50 V? If it drops under load the module is inadequate.
+Leave it for 15 minutes and check the buck's temperature by hand.</p>
+</div>
+
+<div class="step">
+<span class="step-n">STEP 5</span>
+<p><strong>Remove the load, verify the voltage again, then connect the PS2.</strong>
+Connect (−) first, then (+).</p>
+</div>
+
+<div class="danger">
+<p><strong>Do not skip this order.</strong> Turning the trimpot with the PS2 connected means a
+momentary 20 V reaching the console. The PS2 dies on the spot and there is no way back.</p>
+</div>
+
+<h3>Input margin check</h3>
+<p>
+For the buck to work, the input must be a certain amount above the output (dropout).
+As your battery discharges this margin shrinks:
+</p>
+<div class="scroll">
+<table>
+<tr><th>Battery</th><th>Full</th><th>Empty (cut-off)</th><th>Margin for 8.5 V</th><th>Verdict</th></tr>
+<tr><td>12.8 V LiFePO4 (4S)</td><td>14.6 V</td><td>~10.0 V</td><td><strong>1.5–6 V</strong></td><td>✅ Comfortable</td></tr>
+<tr><td>12 V lead-acid</td><td>13.8 V</td><td>~10.8 V</td><td>2.3–5.3 V</td><td>✅ Good</td></tr>
+<tr><td>3S LiPo</td><td>12.6 V</td><td>9.9 V</td><td>1.4–4.1 V</td><td>⚠ Risky near empty</td></tr>
+</table>
+</div>
+
+<h2 id="batarya">6. Battery choice and protection</h2>
+
+<div class="note">
+<p><strong>I recommend LiFePO4 over LiPo</strong> — the 12.8 V LiFePO4 choice in the report is correct.</p>
+<p>Reason: in a vehicle that roams, bumps and tips over, the battery <strong>will take hits</strong>.
+A punctured or crushed LiPo goes into thermal runaway and starts a fire. LiFePO4 chemistry is
+markedly safer here, is sold with a built-in BMS, has a flatter discharge curve and many times the
+cycle life. Think of the price difference as an insurance premium for this project.</p>
+</div>
+
+<h4>Mandatory protection layers</h4>
+<ul>
+<li><strong>BMS</strong> — usually built into LiFePO4 packs. Provides over-discharge, over-charge and
+short-circuit protection. If not built in, buy one separately.</li>
+<li><strong>Low-voltage alarm / indicator</strong> — a panel voltmeter or an audible alarm.
+The PS2 does not <em>shut down gracefully</em> when the voltage drops, it dies abruptly.</li>
+<li><strong>Main switch</strong> — rated for the sum of the branch currents (at least 25–30 A).
+Put it somewhere easy to reach.</li>
+</ul>
+
+<div class="danger">
+<p><strong>Memory card warning:</strong> if power is lost while the PS2 is saving settings
+(<code>mc0:SYS-CONF/ROLECFG.TXT</code>) the memory card can be corrupted — and that card carries
+<strong>FreeMCBoot</strong>. When the battery alarm sounds, do not save settings; charge first.</p>
+</div>
+
+<h4>Charging rules</h4>
+<ul>
+<li><strong>Remove the battery from the vehicle</strong> to charge it.</li>
+<li>The charger must match the chemistry — a LiFePO4 charger and a lead-acid charger are not the same.</li>
+<li><strong>Never charge unattended.</strong> On a non-flammable surface, preferably in a charging bag.</li>
+</ul>
+
+<h2 id="motor">7. Motor wiring and relay contacts</h2>
+
+<div class="note">
+<p><strong>Current vehicle:</strong> four RS-540 motors. The two left motors are one parallel group,
+the two right motors another. Only the first four relays of the Seda Elektronik 8-channel USB relay
+board are used to set direction. The board's 5 V power USB and data USB go to two separate USB
+ports of the PS2 Slim.</p>
+</div>
+
+<h3>Relay contact = galvanic isolation</h3>
+<p>
+A relay contact is a mechanical switch; the coil side and the contact side are
+<strong>electrically separate</strong>. So the PS2 side never touches the motor power. This is
+the nicest part of the architecture.
+</p>
+
+<h3>The current bidirectional SPDT wiring</h3>
+<div class="ok">
+<p>In this vehicle each relay selects the polarity of one motor terminal:</p>
+<ul>
+<li>The <strong>NC</strong> terminals of the four relays are on the motor supply's (−) rail.</li>
+<li>The <strong>NO</strong> terminals of the four relays are on the motor supply's (+) rail.</li>
+<li><strong>COM1 and COM2</strong> go to the two terminals of the paralleled left motor group.</li>
+<li><strong>COM3 and COM4</strong> go to the two terminals of the paralleled right motor group.</li>
+<li>When only one of a group's two relays is energised, the terminals see opposite polarity and the motors run.</li>
+<li>With both relays released, both motor terminals are (−); with both energised, both are (+).
+In either case the voltage across the motor is zero and it stops.</li>
+</ul>
+<p>With this wiring, all four relays energising at once does not short the supply; both terminals of
+both motor groups are (+) and the motors stop. The software nevertheless releases all relays on
+conflicting commands to reach a defined, safe state.</p>
+</div>
+
+<h3>Coil supply — check it</h3>
+<div class="warn">
+<p><strong>Verify by measurement where the Seda relay board's coils are powered from.</strong>
+If the coils are fed from USB: 8 relays × ~70 mA = 560 mA, above the USB port's nominal
+500 mA limit. With 4 relays energised at once ~280 mA — close to the limit.</p>
+<p>If the board has a <code>VCC</code>/<code>JD-VCC</code> jumper (most relay boards do), remove it
+and feed the coils <strong>from a separate 5 V line</strong>. Leave only data and board logic on USB.</p>
+</div>
+
+<h3>The price of switching DC motors with relays</h3>
+<p>
+Relay contacts wear when switching DC and inductive loads (motors). On AC the arc extinguishes
+itself every half cycle; on DC it does not — the contact surface pits over time and eventually
+welds. This is an acceptable cost for Phase 1, but you need to know it:
+</p>
+<ul>
+<li>Because the motor polarity is reversed, <strong>do not fit a unidirectional 1N5408 flyback diode</strong>
+across the motor terminals; in one of the directions it short-circuits the supply.</li>
+<li>For contact arcing and motor noise, a bidirectional TVS or an RC snubber suitable for bidirectional
+operation can be used. Choose the voltage/energy rating from measurement.</li>
+<li>Do not click the relays several times a second — the software already sends a command only on a
+state change, which is good.</li>
+<li>The permanent solution is a PWM motor driver (with a PIC board, in a later phase).</li>
+</ul>
+
+<h3>Tank-style driving wiring</h3>
+<div class="scroll">
+<table>
+<tr><th>Relay</th><th>Role</th><th>Button</th><th>Command (ON/OFF)</th></tr>
+<tr><td>1</td><td>Left group, puts (+) on COM1</td><td>Cross or Circle</td><td>1 / 17</td></tr>
+<tr><td>2</td><td>Left group, puts (+) on COM2</td><td>Triangle or Square</td><td>2 / 18</td></tr>
+<tr><td>3</td><td>Right group, puts (+) on COM3</td><td>Cross or Square</td><td>3 / 19</td></tr>
+<tr><td>4</td><td>Right group, puts (+) on COM4</td><td>Triangle or Circle</td><td>4 / 20</td></tr>
+</table>
+</div>
+
+<div class="danger">
+<p><strong>The software interlock is active.</strong> On conflicting commands such as Cross+Triangle or
+Square+Circle, <code>main.c</code> switches the relays of both motor groups OFF. It also applies a
+configurable dead time on direction changes. In the current SPDT wiring, both relays of one group
+energising puts (+) on both motor terminals; it does not short the supply.</p>
+</div>
+
+<h2 id="montaj">8. Assembly order and test protocol</h2>
+
+<p>Stop and verify at the end of every step. Skipping steps is the only real risk in this phase.</p>
+
+<div class="step">
+<span class="step-n">1</span>
+<p><strong>Measurements.</strong> PS2 DC jack polarity. Motors' no-load and stall current.
+The PS2's real consumption (with the original adapter, ammeter in series).</p>
+</div>
+
+<div class="step">
+<span class="step-n">2</span>
+<p><strong>Buck setup.</strong> The 5 steps above. 15-minute dummy-load test.
+PS2 still not connected.</p>
+</div>
+
+<div class="step">
+<span class="step-n">3</span>
+<p><strong>Run the PS2 from the battery on the bench.</strong> No vehicle, no motors, just
+battery → fuse → switch → buck → PS2. Does <code>role.elf</code> boot? Does the controller work?
+Leave it half an hour, check the buck's temperature.</p>
+</div>
+
+<div class="step">
+<span class="step-n">4</span>
+<p><strong>Add the relay board, test without motors.</strong> Connect only a multimeter
+(continuity mode) or a small LED to the contacts. Do the right contacts close as you press buttons?
+This step catches wiring mistakes before burning a motor.</p>
+</div>
+
+<div class="step">
+<span class="step-n">5</span>
+<p><strong>Connect one motor.</strong> Vehicle wheels off the ground. Are forward/reverse in the
+right direction? If it runs backwards, swap the motor leads.</p>
+</div>
+
+<div class="step">
+<span class="step-n">6</span>
+<p><strong>Connect all four motors, test with the wheels in the air.</strong> Are left/right turns
+correct? Watch the current draw on the ammeter.</p>
+</div>
+
+<div class="step">
+<span class="step-n">7</span>
+<p><strong>Put it on the ground, drive a short distance.</strong> Keep the first drive short, watch
+for heating and voltage sag.</p>
+</div>
+
+<h3>First power-up checklist</h3>
+<ul class="chk">
+<li>Main fuse within 15 cm of the battery (+) terminal</li>
+<li>Both branches have their own fuse</li>
+<li>No fuse anywhere in the negative line</li>
+<li>Buck output measured at 8.50 V with no load and under load</li>
+<li>PS2 jack polarity verified against the original adapter</li>
+<li>NC terminals on (−), NO terminals on (+); left motors across COM1–COM2, right motors across COM3–COM4</li>
+<li>No unidirectional flyback diode on the motor terminals; suppression is a bidirectional TVS/RC snubber</li>
+<li>Software conflicting-command interlock and direction-change dead time tested</li>
+<li>All cables fine-stranded silicone, crimped, heat-shrunk</li>
+<li>Cables away from wheels and the PS2 fan intake</li>
+<li>Battery firmly secured, in a position that will not take hits</li>
+<li>Main switch in an easily reachable spot</li>
+<li>Voltmeter/alarm fitted and readable</li>
+<li>Fire extinguisher or sand bucket in the same room (for the first tests)</li>
+</ul>
+
+<h2 id="liste">9. Shopping list</h2>
+
+<div class="scroll">
+<table>
+<tr><th>Part</th><th>Spec</th><th>Qty</th><th>Note</th></tr>
+<tr><td>LiFePO4 battery</td><td>12.8 V, 12 Ah, built-in BMS</td><td>1</td><td>Preferred. Lead-acid is cheaper but heavy</td></tr>
+<tr><td>XL4016 buck</td><td>4–40 V → 1.25–36 V, 8 A, with heatsink</td><td>1</td><td>For the PS2, set to 8.50 V</td></tr>
+<tr><td>Mini buck (5 V)</td><td>5 V 2 A</td><td>1</td><td>For the WiFi bridge (Phase 2)</td></tr>
+<tr><td>Blade fuse holder</td><td>In-line or box</td><td>3</td><td>Main + PS2 branch + motor branch</td></tr>
+<tr><td>Blade fuses</td><td>20 A / 5 A / 15 A</td><td>a few of each</td><td>Buy spares, they will blow</td></tr>
+<tr><td>Main switch</td><td>≥30 A DC</td><td>1</td><td>Easy to reach</td></tr>
+<tr><td>Panel voltmeter/ammeter</td><td>0–100 V / 0–10 A</td><td>1</td><td>For measurement and fault tracking</td></tr>
+<tr><td>Silicone cable</td><td>4.0 / 2.5 / 1.0 mm²</td><td>—</td><td>Fine-stranded, not solid</td></tr>
+<tr><td>XT60 / XT30 connectors</td><td>—</td><td>a few pairs</td><td>Against reverse connection</td></tr>
+<tr><td>Motor transient suppression</td><td>Bidirectional TVS or suitable RC snubber</td><td>per measurement</td><td>No unidirectional 1N5408</td></tr>
+<tr><td>Crimping tool + terminal set</td><td>—</td><td>1</td><td>Mandatory for solid connections</td></tr>
+<tr><td>Heat-shrink set</td><td>—</td><td>1</td><td></td></tr>
+<tr><td>LiFePO4 charger</td><td>chemistry-matched</td><td>1</td><td>Not the same as a lead-acid charger</td></tr>
+</table>
+</div>
+
+<p>
+If you already bought a glass fuse holder, keep it — with a <strong>ceramic (sand-filled) 5×20 time-delay</strong>
+fuse inside it you can comfortably use it on the PS2 branch.
+</p>
+
+<footer>
+Phase 1 electronics design · English translation of <code>docs/tr/FAZ1_ELEKTRONIK.html</code><br>
+Related: <code>PROJECT_PHASES.html</code> (roadmap) ·
+<code>PS2_Slim_Battery_Power_Report.html</code> (power and cost analysis) ·
+<code>PROJECT_GUIDE.html</code> (software architecture)
+</footer>
+
+</main>
+</body>
+</html>

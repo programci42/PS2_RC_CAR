@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PS2 Slim Battery Power Plan</title>
+  <style>
+    :root {
+      --ink: #1f2933;
+      --muted: #52606d;
+      --line: #d9e2ec;
+      --soft: #f5f7fa;
+      --accent: #0f766e;
+      --warn: #a15c07;
+      --danger: #b42318;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #ffffff;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 22px 56px;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    h1 {
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin-top: 34px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--line);
+      font-size: 22px;
+    }
+
+    h3 {
+      margin-top: 22px;
+      font-size: 17px;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    a {
+      color: #075985;
+    }
+
+    .meta {
+      margin-top: 10px;
+      color: var(--muted);
+    }
+
+    .summary {
+      margin-top: 22px;
+      padding: 16px 18px;
+      border-left: 5px solid var(--accent);
+      background: #ecfdf5;
+    }
+
+    .warning {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-left: 5px solid var(--danger);
+      background: #fff5f5;
+    }
+
+    .note {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-left: 5px solid var(--warn);
+      background: #fffbeb;
+    }
+
+    table {
+      width: 100%;
+      margin: 14px 0 22px;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px 10px;
+      vertical-align: top;
+      word-wrap: break-word;
+    }
+
+    th {
+      background: var(--soft);
+      text-align: left;
+    }
+
+    code {
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #edf2f7;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      line-height: 1.45;
+    }
+
+    ul {
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    .badge {
+      display: inline-block;
+      margin: 0 4px 4px 0;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: #ffffff;
+      font-size: 13px;
+    }
+
+    @media print {
+      main {
+        max-width: none;
+        padding: 18mm;
+      }
+
+      a {
+        color: var(--ink);
+        text-decoration: none;
+      }
+
+      h2 {
+        break-after: avoid;
+      }
+
+      table, pre, .summary, .warning, .note {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Running a PS2 Slim Safely from a Battery and Powering the Relay Loads</h1>
+    <p class="meta">
+      Prepared: 21 July 2026 |
+      Target system: PS2 Slim with external adapter, Seda Elektronik 8-relay board, 4 DC motors, fan and lamp
+    </p>
+
+    <div class="summary">
+      <strong>Short conclusion:</strong>
+      The most sensible and affordable solution is a <strong>12 V 7 Ah sealed lead-acid battery</strong>, or
+      on a better budget a <strong>12.8 V LiFePO4 battery</strong>, with a separate buck regulator producing
+      <strong>8.50 V DC</strong> for the PS2 Slim. Motors, fan and lamp must never be fed from the PS2 USB
+      port or from the PS2's 8.5 V supply line; they must run from a separately fused 12 V load line
+      through the relay contacts.
+    </div>
+
+    <div class="note">
+      <strong>What about the PS2's own adapter?</strong>
+      When running from a battery we do not use the PS2's original mains adapter. Its job is done by the
+      DC-DC regulator on the battery side: the ~12 V from the battery is dropped to
+      <code>8.50 V DC</code> and fed to the PS2 Slim's normal adapter input. If you want to use it from the
+      wall socket at home you can still use the original adapter; never connect it in parallel with the
+      battery circuit at the same time.
+    </div>
+
+    <div class="note">
+      <strong>Current installed setup (September 2026):</strong>
+      A single 3S 11.1 V 40C LiPo is split into two branches. One branch is dropped to 8.50 V with an
+      XL4015 and goes to the PS2 Slim DC input; the other goes directly to the four RS-540 motors through
+      the relay contacts. The Seda Elektronik 8-channel relay board's separate 5 V power USB and HID data
+      USB occupy the PS2 Slim's two USB ports. The two left motors are in parallel, the two right motors
+      in parallel; the first four SPDT relays set direction.
+    </div>
+
+    <h2>Recommended Power Architecture</h2>
+    <p>Two separate power lines are the cleanest solution for this project:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Line</th>
+          <th>Feeds</th>
+          <th>Why separate?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>PS2 line</td>
+          <td>PS2 Slim and the data side of the USB relay board</td>
+          <td>The PS2 wants a stable, clean <code>8.5 V DC</code>. Motor noise or a sudden current dip can lock up the PS2.</td>
+        </tr>
+        <tr>
+          <td>Load line</td>
+          <td>4 DC motors, fan, lamp</td>
+          <td>Motors draw high current at start-up. These loads must be fed separately through a fuse and the relay contacts.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <pre>12V battery / 12.8V LiFePO4
+   |
+   +-- 7.5A fuse -- main switch -- XL4016 buck -- 8.50V -- PS2 Slim DC input
+   |
+   +-- separate fuse box -- relay contacts -- motors / fan / lamp</pre>
+
+    <div class="warning">
+      <strong>Important:</strong>
+      The PS2 Slim's USB ports are for sending data to the relay board and powering small electronics.
+      Feeding 4 motors, a fan or a lamp from the PS2 USB port is not correct.
+    </div>
+
+    <h2>Technical Basis</h2>
+    <p>
+      On PS2 Slim models with an external adapter the typical adapter rating is <strong>8.5 V DC, about 5.65 A</strong>.
+      This means the PS2 side should be planned for a capacity of roughly <strong>48 W</strong>.
+    </p>
+    <p>
+      The common approach in portable PS2 projects is to drop the ~11.1 V / 12 V from the battery to the
+      <strong>8.5 V</strong> the PS2 wants with a quality DC-DC regulator. PowerStream's car adapter for the PS2
+      also produces 8.5 V from a 10–15 V input, which shows this architecture is on the right track.
+    </p>
+
+    <h2>Power and Run-Time Calculation</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Calculation / Note</th>
+          <th>Practical result</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>PS2 Slim</td>
+          <td>8.5 V × 5.65 A adapter capacity is about 48 W. Real consumption varies with the game, the disc and the USB load.</td>
+          <td>Choose a regulator of at least 6 A, preferably above 8 A.</td>
+        </tr>
+        <tr>
+          <td>12 V 7 Ah sealed lead-acid</td>
+          <td>Nominal energy about 84 Wh. In practice not all of it is usable with lead-acid.</td>
+          <td>For the PS2 alone, about 1–1.5 hours is realistic.</td>
+        </tr>
+        <tr>
+          <td>12.8 V 12 Ah LiFePO4</td>
+          <td>Nominal energy about 154 Wh. More efficient and lighter than lead-acid.</td>
+          <td>For the PS2 alone, about 2.5–3 hours can be expected.</td>
+        </tr>
+        <tr>
+          <td>Motors, fan, lamp</td>
+          <td>These loads determine the total run time. Motor start-up current can be far higher than running current.</td>
+          <td>No precise run time can be calculated without measuring the motors' current.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Parts and Price List</h2>
+    <p class="meta">Prices are approximate ranges seen online in Turkey (TL); check the current seller price before buying.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Part</th>
+          <th>Recommended spec</th>
+          <th>Approx. price</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>12 V 7 Ah sealed lead-acid</td>
+          <td>12 V, 7 Ah, maintenance-free</td>
+          <td>340–650 TL</td>
+          <td>Cheapest practical solution. Heavy; capacity cannot be used as efficiently as LiFePO4.</td>
+        </tr>
+        <tr>
+          <td>12.8 V LiFePO4 battery</td>
+          <td>12.8 V, 12 Ah, built-in BMS</td>
+          <td>2,600–3,700 TL</td>
+          <td>More expensive but safer, lighter and longer-lived.</td>
+        </tr>
+        <tr>
+          <td>XL4016 buck regulator</td>
+          <td>4–40 V input, 1.25–36 V output, 8 A class</td>
+          <td>170–450 TL</td>
+          <td>Output must be set to <code>8.50 V</code> with a multimeter for the PS2. Cooling matters.</td>
+        </tr>
+        <tr>
+          <td>Blade fuse holder / box</td>
+          <td>Automotive fuse holder or multi-fuse box</td>
+          <td>35–350 TL</td>
+          <td>PS2 line and load line must be fused separately.</td>
+        </tr>
+        <tr>
+          <td>12 V battery charger</td>
+          <td>Charger matching the battery type used</td>
+          <td>700–1,200 TL</td>
+          <td>Lead-acid and LiFePO4 chargers are not necessarily the same.</td>
+        </tr>
+        <tr>
+          <td>DC voltmeter / ammeter</td>
+          <td>0–100 V, 0–10 A panel type</td>
+          <td>85–250 TL</td>
+          <td>Useful for testing and fault tracking.</td>
+        </tr>
+        <tr>
+          <td>USB-C PD trigger + power bank</td>
+          <td>Trigger supporting 12 V/15 V/20 V and a powerful power bank</td>
+          <td>2,300–4,500 TL+</td>
+          <td>Can be tried for the PS2 alone; not recommended as the main solution with motors.</td>
+        </tr>
+        <tr>
+          <td>Ready-made 3S LiPo pack</td>
+          <td>11.1 V 3S, preferably 5000 mAh or more, XT60/T-Plug output</td>
+          <td>1,900–7,500 TL</td>
+          <td>Can deliver high current but needs balance charging, low-voltage alarm/cut-off and fire safety.</td>
+        </tr>
+        <tr>
+          <td>Ready-made Li-ion pack</td>
+          <td>3S or 4S, built-in BMS, adequate current capacity</td>
+          <td>Varies by model</td>
+          <td>Packs with a BMS are safer than assembling bare cells; the output current must still be enough for PS2 + loads.</td>
+        </tr>
+        <tr>
+          <td>Cable, sockets, switch, terminals</td>
+          <td>Cable cross-section matched to the current, solid connectors</td>
+          <td>200–600 TL</td>
+          <td>No thin cable on the motor line. No loose connections.</td>
+        </tr>
+        <tr>
+          <td>PS2 EyeToy camera</td>
+          <td>USB EyeToy camera such as SCEH-0004 / SLEH-00030</td>
+          <td>270–300 TL camera alone; bundles with games up to 1,300 TL</td>
+          <td>When buying second-hand, ask specifically about the cable, the USB plug and whether the PS2 detects it.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Can a Ready-Made LiPo / Li-ion Pack Be Used?</h2>
+    <p>
+      Ready-made LiPo packs are left off the main list not because they are unusable, but because for
+      this project they are not as plug-and-play and forgiving as lead-acid or LiFePO4. RC-type 3S LiPo
+      packs can deliver high current, which is an advantage for motors. But the risks with wrong charging,
+      over-discharge, short circuit or mechanical damage are more serious.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Option</th>
+          <th>Advantage</th>
+          <th>Watch out for</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>3S LiPo 11.1 V</td>
+          <td>Light, high current, strong in motorised systems.</td>
+          <td>Needs a balance charger, a low-voltage alarm/cut-off and a safe storage bag.</td>
+        </tr>
+        <tr>
+          <td>Li-ion pack with BMS</td>
+          <td>More controlled in daily use than LiPo; the BMS can provide protection.</td>
+          <td>The pack's continuous output current must cover PS2 and motor loads. Cheap packs may have a low BMS current limit.</td>
+        </tr>
+        <tr>
+          <td>LiFePO4 pack</td>
+          <td>Safer chemistry, long cycle life, compatible with 12 V systems.</td>
+          <td>Higher initial cost, needs a suitable LiFePO4 charger.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      My ranking: <strong>LiFePO4 is the cleanest solution</strong>; on a low budget the <strong>12 V 7 Ah lead-acid</strong>;
+      if weight is critical and you are willing to manage battery safety, <strong>3S LiPo</strong>. If you use LiPo, the
+      PS2 line still must not connect directly to the pack; a buck regulator must produce <code>8.50 V</code>.
+    </p>
+
+    <h2>Suggested Budget Baskets</h2>
+    <h3>Cheap and working</h3>
+    <p>
+      <span class="badge">12 V 7 Ah lead-acid</span>
+      <span class="badge">XL4016 buck</span>
+      <span class="badge">fuse holders</span>
+      <span class="badge">12 V battery charger</span>
+      <span class="badge">cable / sockets / switch</span>
+    </p>
+    <p>Estimated total: <strong>1,300–2,300 TL</strong>. The most sensible start for bench trials and short-term use.</p>
+
+    <h3>Higher quality</h3>
+    <p>
+      <span class="badge">12.8 V LiFePO4 battery</span>
+      <span class="badge">quality buck regulator</span>
+      <span class="badge">fuse box</span>
+      <span class="badge">LiFePO4-compatible charger</span>
+      <span class="badge">volt / amp meter</span>
+    </p>
+    <p>Estimated total: <strong>3,600–5,500 TL</strong>. Lighter, longer-lived and more stable.</p>
+
+    <h2>Wiring Plan</h2>
+    <ol>
+      <li>Put a main fuse on the battery output.</li>
+      <li>After the fuse, put the main on/off switch.</li>
+      <li>Run the PS2 line through its own fuse to the XL4016 buck regulator.</li>
+      <li>Set the XL4016 output to <code>8.50 V</code> with a multimeter before connecting the PS2.</li>
+      <li>Check the regulator's output polarity: plus and minus must not be reversed.</li>
+      <li>Build a separate fused 12 V line for motors, fan and lamp.</li>
+      <li>Use the Seda relay board's contacts to switch the motor/fan/lamp supply line.</li>
+      <li>Because the motor polarity is reversed, do not fit a unidirectional flyback diode across the
+      terminals. For noise suppression use a bidirectional TVS or an RC snubber suited to bidirectional operation.</li>
+      <li>For the first test, try the regulator output with a load resistor or lamp instead of the PS2.</li>
+      <li>If everything checks out, connect the PS2 and test without motors first.</li>
+    </ol>
+
+    <h2>Can a Power Bank Be Used?</h2>
+    <p>
+      A standard 5 V power bank is not directly suitable. The PS2 wants about 8.5 V and can draw high current.
+      A powerful USB-C PD power bank with a PD trigger giving 12 V or 15 V into the buck regulator can be tried
+      for the PS2 alone. But once motors, fan and lamp are in the same system, the power bank solution becomes
+      more expensive and more troublesome.
+    </p>
+    <div class="note">
+      <strong>My recommendation:</strong>
+      Use a 12 V lead-acid or LiFePO4 battery instead of a power bank for this project. A power bank only makes
+      sense if portability is paramount and the motor loads run from a separate battery.
+    </div>
+
+    <h2>Safety Notes</h2>
+    <ul>
+      <li>Never feed 12 V directly into the PS2 input; the target for the PS2 Slim is <strong>8.50 V DC</strong>.</li>
+      <li>Measure the regulator output with a multimeter before connecting it to the PS2.</li>
+      <li>Fuse the PS2 line and the motor line separately.</li>
+      <li>Motor start-up current is high, so check the relay contact current ratings.</li>
+      <li>DC motors cause sparking and noise at relay contacts; use a diode/TVS/snubber as appropriate.</li>
+      <li>A battery short circuit carries a serious heat and fire risk; leave no bare cables.</li>
+      <li>If you build a Li-ion pack, always use a BMS. Never connect random 18650 cells directly.</li>
+      <li>In the first trials, test with only the PS2 and the relay board, without connecting motors.</li>
+    </ul>
+
+    <h2>Sources</h2>
+    <ul>
+      <li><a href="https://www.powerstream.com/dc-ps2.htm">PowerStream PS2 12 V to 8.5 V car adapter</a></li>
+      <li><a href="https://www.robotistan.com/xh4016-voltaj-regulator-modulu">Robotistan XL4016 voltage regulator module</a></li>
+      <li><a href="https://www.robotistan.com/3s-lipo-pil-111v-lipo-batarya">Robotistan 3S 11.1 V LiPo price examples</a></li>
+      <li><a href="https://www.thkmodelucak.com/urun/thk-2600-mah-11-1v-3s-35c-lipo-batarya-2100">THK 2600 mAh 11.1 V 3S LiPo example</a></li>
+      <li><a href="https://www.hepsiburada.com/12v-7ah-aku-x-s59053">Hepsiburada 12 V 7 Ah battery price examples</a></li>
+      <li><a href="https://www.akakce.com/arama/?q=lifepo4+ak%C3%BC">Akakçe LiFePO4 battery price examples</a></li>
+      <li><a href="https://www.adamoto.com.tr/kategori/bicak-sigorta">Adamoto blade fuse holders and fuse boxes</a></li>
+      <li><a href="https://www.robotronik.com.tr/dijital-voltmetre-ampermetre-dc-100v-10a-a0334">Robotronik DC voltmeter/ammeter module</a></li>
+      <li><a href="https://www.sahibinden.com/ilan/ikinci-el-ve-sifir-alisveris-oyunculara-ozel-oyuncu-ekipmanlari-playstation-2-eye-toy-usb-kamera-sceh-0004-1288021152/detay">Sahibinden PS2 EyeToy camera listing example</a></li>
+      <li><a href="https://www.nerdenevarsa.com/urun/nintendo-wii-udraw-game-tablet-wii-oyun-tableti/">NeredeNeVarsa PS2 EyeToy camera price example</a></li>
+      <li><a href="https://bitbuilt.net/forums/threads/battery-powering-a-ps2.3168/">BitBuilt portable PS2 battery discussion</a></li>
+      <li><a href="https://bitbuilt.net/forums/tags/ps2-portable/">BitBuilt PS2 portable project threads</a></li>
+    </ul>
+  </main>
+</body>
+</html>

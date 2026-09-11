@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS2 USB Röle Projesi — Anlama Rehberi</title>
+<style>
+:root{
+  --bg:#ffffff; --ink:#1f2933; --muted:#5c6b7a; --line:#dde3ea;
+  --soft:#f5f7fa; --accent:#0f766e; --accent-soft:#e6f4f1;
+  --warn:#a15c07; --warn-soft:#fdf6e7; --code-bg:#1e2430; --code-ink:#e6edf3;
+  --ee:#2563eb; --iop:#7c3aed; --usb:#0f766e; --hw:#b45309;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#12161c; --ink:#e6edf3; --muted:#9aa7b4; --line:#2a323d;
+    --soft:#1a2029; --accent:#5eead4; --accent-soft:#14302c;
+    --warn:#fbbf24; --warn-soft:#2e2410; --code-bg:#0c1017; --code-ink:#e6edf3;
+    --ee:#7ba7f7; --iop:#b794f6; --usb:#5eead4; --hw:#fbbf24;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:16px/1.65 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+main{max-width:900px;margin:0 auto;padding:36px 22px 80px}
+h1{font-size:30px;line-height:1.2;margin:0 0 6px}
+h2{
+  font-size:22px;margin:52px 0 14px;padding-bottom:8px;
+  border-bottom:2px solid var(--line);scroll-margin-top:20px;
+}
+h3{font-size:17px;margin:28px 0 8px}
+p{margin:12px 0}
+.lead{color:var(--muted);font-size:17px;margin:0 0 24px}
+code{
+  font-family:Consolas,"SF Mono",Menlo,monospace;font-size:.88em;
+  background:var(--soft);border:1px solid var(--line);
+  border-radius:4px;padding:1px 5px;
+}
+pre{
+  background:var(--code-bg);color:var(--code-ink);
+  padding:16px;border-radius:8px;overflow-x:auto;
+  font-family:Consolas,"SF Mono",Menlo,monospace;font-size:13.5px;line-height:1.55;
+}
+pre code{background:none;border:none;padding:0;color:inherit;font-size:inherit}
+.fileref{
+  display:block;font-size:12.5px;color:var(--muted);
+  margin:14px 0 4px;font-family:Consolas,monospace;
+}
+.note,.warn{
+  border-left:4px solid var(--accent);background:var(--accent-soft);
+  padding:12px 16px;border-radius:0 6px 6px 0;margin:18px 0;
+}
+.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p:first-child,.warn p:first-child{margin-top:0}
+.note p:last-child,.warn p:last-child{margin-bottom:0}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14.5px}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scroll table{min-width:520px}
+ul,ol{padding-left:22px}
+li{margin:6px 0}
+.toc{
+  background:var(--soft);border:1px solid var(--line);
+  border-radius:8px;padding:16px 20px;margin:26px 0;
+}
+.toc ol{margin:6px 0 0;padding-left:20px}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.layer{
+  border:1px solid var(--line);border-left-width:5px;
+  border-radius:0 8px 8px 0;padding:14px 18px;margin:14px 0;background:var(--soft);
+}
+.layer h3{margin-top:0}
+.l-ee{border-left-color:var(--ee)}
+.l-iop{border-left-color:var(--iop)}
+.l-usb{border-left-color:var(--usb)}
+.l-hw{border-left-color:var(--hw)}
+.tag{
+  display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;padding:2px 7px;border-radius:4px;
+  background:var(--accent-soft);color:var(--accent);margin-left:8px;vertical-align:2px;
+}
+.flow{
+  font-family:Consolas,monospace;font-size:13px;line-height:1.7;
+  background:var(--code-bg);color:var(--code-ink);
+  padding:18px;border-radius:8px;overflow-x:auto;white-space:pre;
+}
+hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+footer{margin-top:56px;color:var(--muted);font-size:13.5px}
+</style>
+</head>
+<body>
+<main>
+
+<h1>PS2 USB Röle Projesi</h1>
+<p class="lead">
+Bu belge <code>C:\ps2dev\projeler\role</code> altındaki projenin ne yaptığını,
+nasıl kurgulandığını ve PS2'den USB üzerinden bir cihaza en basit haliyle nasıl
+veri gönderildiğini anlatır. Amaç: kodun tamamını satır satır ezberlemek değil,
+<strong>hangi parça neden var</strong> sorusunu cevaplamak.
+</p>
+
+<div class="note">
+<p><strong>Videolar:</strong> aracın bitmiş hali —
+<a href="https://www.youtube.com/shorts/x-vaeMoXdgk">YouTube kısa video 1</a> ·
+<a href="https://www.youtube.com/shorts/5uW2evH4y8U">YouTube kısa video 2</a></p>
+</div>
+
+<div class="toc">
+<strong>İçindekiler</strong>
+<ol>
+  <li><a href="#genel">Proje tek cümlede</a></li>
+  <li><a href="#katman">Dört katman — kim ne yapıyor</a></li>
+  <li><a href="#akis">Bir tuşa basınca ne oluyor (uçtan uca)</a></li>
+  <li><a href="#usb">USB'den veri göndermek — en basit hali</a></li>
+  <li><a href="#rpc">EE ile IOP nasıl konuşuyor (SIF RPC)</a></li>
+  <li><a href="#protokol">Röle kartının protokolü ve 12 mod meselesi</a></li>
+  <li><a href="#donanim">Röle kartına bağlantı ve elektrik</a></li>
+  <li><a href="#dosya">Dosya dosya ne var</a></li>
+  <li><a href="#derleme">Derleme ve çalıştırma</a></li>
+  <li><a href="#sozluk">Kısa sözlük</a></li>
+</ol>
+</div>
+
+<h2 id="genel">1. Proje tek cümlede</h2>
+<p>
+PlayStation 2'nin USB portuna takılan <strong>Seda Elektronik 8'li HID röle kartını</strong>
+DualShock koluyla süren bir homebrew uygulaması. Kola basılı tutunca röle çeker,
+bırakınca bırakır.
+</p>
+<p>Araçta dört adet RS-540 motor vardır: iki sol motor paralel bir grup, iki sağ motor
+paralel bir gruptur. Röle 1-2 sol grubun, röle 3-4 sağ grubun iki motor ucunu sürer.</p>
+<div class="scroll">
+<table>
+<tr><th>Tuş</th><th>Hareket</th><th>ON röleleri</th><th>OFF komutları</th></tr>
+<tr><td>X</td><td>İleri</td><td>1 + 3</td><td>17 + 19</td></tr>
+<tr><td>Kare</td><td>Sola tank dönüşü</td><td>2 + 3</td><td>18 + 19</td></tr>
+<tr><td>Üçgen</td><td>Geri</td><td>2 + 4</td><td>18 + 20</td></tr>
+<tr><td>Yuvarlak</td><td>Sağa tank dönüşü</td><td>1 + 4</td><td>17 + 20</td></tr>
+<tr><td colspan="2">Kol çıkarılırsa / restart</td><td colspan="2"><code>17, 18, 19, 20</code> = röleleri ayrı ayrı kapat</td></tr>
+</table>
+</div>
+<p>
+Kart <code>VID 0x178E / PID 0x07D9</code> ile tanınır. Bu değerler program içinden
+(ayarlar ekranından) değiştirilebilir ve hafıza kartına kaydedilir.
+</p>
+
+<h2 id="katman">2. Dört katman — kim ne yapıyor</h2>
+<p>
+PS2'de bir USB cihazı sürmek tek dosyalık bir iş değil, çünkü konsolun içinde
+<strong>iki ayrı işlemci</strong> var ve USB donanımı bunlardan sadece birine bağlı.
+Projenin tuhaf görünen bölünmüşlüğünün tek sebebi bu.
+</p>
+
+<div class="layer l-ee">
+<h3>EE — Emotion Engine <span class="tag">main.c</span></h3>
+<p>
+Ana işlemci (MIPS R5900, 300 MHz). Senin "uygulaman" burada çalışır:
+ekrana yazı basma, kolu okuma, menüler, hafıza kartı, şifre ekranı.
+<strong>USB donanımına doğrudan erişemez.</strong>
+</p>
+</div>
+
+<div class="layer l-iop">
+<h3>IOP — I/O Processor <span class="tag">iop/seda_relay_irx.c</span></h3>
+<p>
+Yardımcı işlemci (MIPS R3000, 36 MHz — aslında PS1'in CPU'su). USB, hafıza kartı,
+CD sürücü, ses gibi tüm çevre birimleri buna bağlı. USB paketini fiilen gönderen taraf burasıdır.
+IOP'ta çalışan modüllerin uzantısı <code>.irx</code>'tir.
+</p>
+</div>
+
+<div class="layer l-usb">
+<h3>usbd.irx <span class="tag">Sony'nin hazır modülü</span></h3>
+<p>
+Sony'nin yazdığı USB host yığını. Cihaz takıldığında enumerate eder, descriptor'ları
+okur, ve <code>sceUsbd*</code> fonksiyonlarını sunar. Sen bunu yazmıyorsun,
+PS2SDK'dan alıp ELF'in içine gömüyorsun.
+</p>
+</div>
+
+<div class="layer l-hw">
+<h3>Röle kartı <span class="tag">donanım</span></h3>
+<p>
+USB HID cihaz olarak görünür. İçindeki mikrodenetleyici, gelen 1 baytlık komuta bakıp
+ilgili röleyi çeker veya bırakır. Röleler kendi durumlarını kartın içinde tutar (latch).
+</p>
+</div>
+
+<div class="note">
+<p><strong>Neden IRX'ler ELF'in içine gömülü?</strong> Program CD'den veya USB'den
+çalışabilsin diye. Eğer <code>.irx</code> dosyalarını ayrı tutsaydın, program
+"bunları diskte nerede bulacağım?" problemine düşerdi. <code>bin2c</code> aracı
+IRX dosyasını bir C dizisine (<code>unsigned char usbd_irx[] = {...}</code>) çevirir,
+program da onu bellekten yükler. Tek dosya, sıfır bağımlılık.</p>
+</div>
+
+<h2 id="akis">3. Bir tuşa basınca ne oluyor</h2>
+<p>X tuşuna bastığın andan rölenin "tık" demesine kadar geçen yol:</p>
+
+<div class="flow">[1]  padRead()                    EE   kol durumu okunur
+      |
+[2]  pressed_buttons & PAD_CROSS  EE   "yeni basıldı" tespiti
+      |
+[3]  relay_set(0, 1)              EE   röle 0, durum ON
+      |                                 komut = 1 seçilir
+[4]  SifCallRpc(...)              EE   ---> IOP'a çağrı gönder
+      |                                     (SIF donanım köprüsü)
+[5]  rpc_handler()                IOP  çağrı karşılanır
+      |
+[6]  seda_send_command(1, mod)    IOP  8 baytlık rapor hazırlanır
+      |                                 byte[0]=0x01, byte[3]=0x01
+[7]  sceUsbdInterruptTransfer()   IOP  ---> usbd.irx
+      |
+[8]  USB interrupt OUT paketi     USB  ---> kablodan kartın
+      |                                     interrupt endpoint'ine
+[9]  kart komutu çözer            HW   röle 1 çeker
+      |
+[10] transfer_done() callback     IOP  sonuç geri döner
+      |
+[11] SifCallRpc geri döner        EE   ekrana result/status yazılır</div>
+
+<p>
+Tuş bırakıldığında aynı yol komut <code>17</code> ile tekrarlanır. Kritik nokta:
+program <strong>her döngüde komut göndermez</strong>, sadece durum değiştiğinde gönderir.
+Kod bunu şöyle sağlıyor:
+</p>
+
+<span class="fileref">main.c — relay_set()</span>
+<pre><code>static void relay_set(int relay, int enabled)
+{
+    u8 command;
+
+    if (relay &lt; 0 || relay &gt;= RELAY_COUNT) return;
+
+    /* Durum zaten aynıysa hiçbir şey yapma.
+       Bu olmasaydı saniyede yüzlerce USB paketi giderdi. */
+    if (relay_state[relay] == (enabled ? 1 : 0)) return;
+
+    relay_state[relay] = enabled ? 1 : 0;
+    command = enabled ? relay_on_command[relay] : relay_off_command[relay];
+
+    relay_send_command(command);
+    show_relay_event(relay, enabled, command);
+}</code></pre>
+
+<p>
+Ayrıca kol çıkarılırsa veya bağlantı bozulursa <code>relays_all_off()</code> çağrılır.
+Bu bir güvenlik davranışı: kol koptuğunda röle çekili kalmamalı.
+</p>
+
+<h2 id="usb">4. USB'den veri göndermek — en basit hali</h2>
+<p>
+Projenin geri kalanını (menüler, şifre, hafıza kartı) çıkarırsan, PS2'den bir USB HID
+cihaza veri göndermek aslında <strong>üç adımdır</strong>.
+</p>
+
+<h3>Adım 1 — Cihazı tanı (probe)</h3>
+<p>
+<code>usbd.irx</code> her yeni USB cihazda senin sürücünün <code>probe</code>
+fonksiyonunu çağırır ve "bu cihaz seni ilgilendiriyor mu?" diye sorar.
+1 dönersen cihaz senindir.
+</p>
+
+<span class="fileref">iop/seda_relay_irx.c — sadeleştirilmiş</span>
+<pre><code>static int seda_probe(int dev_id)
+{
+    UsbDeviceDescriptor *dev;
+
+    /* Cihazın kimlik kartını oku */
+    dev = sceUsbdScanStaticDescriptor(dev_id, NULL, USB_DT_DEVICE);
+    if (!dev) return 0;
+
+    /* Benim aradığım cihaz mı? */
+    if (dev-&gt;idVendor != target_vid || dev-&gt;idProduct != target_pid)
+        return 0;
+
+    return 1;   /* evet, bu benim */
+}</code></pre>
+
+<h3>Adım 2 — Bağlan ve bir "boru" (pipe) aç</h3>
+<p>
+USB'de veri, endpoint denen kanallardan akar. Bir endpoint'e yazmak için önce
+<code>sceUsbdOpenPipe</code> ile bir tutamak (handle) alman gerekir.
+</p>
+
+<span class="fileref">iop/seda_relay_irx.c — sadeleştirilmiş</span>
+<pre><code>static int seda_connect(int dev_id)
+{
+    UsbConfigDescriptor    *conf;
+    UsbInterfaceDescriptor *intf;
+    UsbEndpointDescriptor  *out_ep;
+
+    conf = sceUsbdScanStaticDescriptor(dev_id, dev, USB_DT_CONFIG);
+    intf = find_hid_interface(dev_id, conf);        /* HID arayüzünü bul */
+
+    /* Kontrol borusu: her USB cihazda vardır, endpoint 0.
+       İkinci parametre NULL ise "endpoint 0" demektir. */
+    relay_dev.control_ep = sceUsbdOpenPipe(dev_id, NULL);
+
+    /* Interrupt OUT borusu: varsa asıl bunu kullanacağız */
+    out_ep = find_interrupt_out_endpoint(intf, conf);
+    if (out_ep)
+        relay_dev.interrupt_out_ep = sceUsbdOpenPipe(dev_id, out_ep);
+
+    /* Cihazı yapılandır (SET_CONFIGURATION) */
+    sceUsbdSetConfiguration(relay_dev.control_ep,
+                            conf-&gt;bConfigurationValue,
+                            config_done, &amp;relay_dev);
+    return 0;
+}</code></pre>
+
+<h3>Adım 3 — Paketi gönder</h3>
+<p>
+İşte tüm işin özü. 8 bayt hazırla, boruya yaz, sonucu bekle:
+</p>
+
+<span class="fileref">iop/seda_relay_irx.c — özü</span>
+<pre><code>/* 1) Paketi hazırla */
+memset(relay_dev.report, 0, sizeof(relay_dev.report));
+relay_dev.report[0] = 0x01;          /* sabit başlık */
+relay_dev.report[3] = (u8)command;   /* 1..4 = ON, 17..20 = OFF */
+
+/* 2) Gönder — bu çağrı ANINDA döner, iş bitmiş değildir */
+start_result = sceUsbdInterruptTransfer(
+    relay_dev.interrupt_out_ep,   /* hangi boru      */
+    relay_dev.report,             /* veri            */
+    8,                            /* kaç bayt        */
+    transfer_done,                /* bitince çağrılacak fonksiyon */
+    &amp;relay_dev);                  /* callback'e geçilecek veri    */
+
+/* 3) Bitmesini bekle */
+result = wait_transfer_result(start_result);</code></pre>
+
+<div class="note">
+<p><strong>En önemli kavram: USB transferleri asenkrondur.</strong>
+<code>sceUsbdInterruptTransfer</code> "gönder" demez, "gönderme işini kuyruğa al" der ve
+hemen geri döner. Veri gerçekten gittiğinde <code>usbd.irx</code> senin verdiğin
+callback fonksiyonunu çağırır. Bu yüzden kodda bir semafor (<code>done_sema</code>) var:</p>
+</div>
+
+<span class="fileref">iop/seda_relay_irx.c — bekleme mekanizması</span>
+<pre><code>/* usbd.irx transfer bitince BUNU çağırır */
+static void transfer_done(int result, int bytes, void *arg)
+{
+    relay_dev.transfer_result = result;
+    relay_dev.transfer_bytes  = bytes;
+    SignalSema(done_sema);        /* "bitti" bayrağını kaldır */
+}
+
+/* Biz de bayrağı bekleriz — en fazla 3 saniye */
+static int wait_transfer_result(int start_result)
+{
+    int i;
+    if (start_result != USB_RC_OK) return start_result;
+
+    for (i = 0; i &lt; 300; i++) {
+        if (PollSema(done_sema) == 0)      /* bayrak kalktı mı? */
+            return relay_dev.transfer_result;
+        DelayThread(10000);                /* 10 ms uyu, tekrar bak */
+    }
+
+    relay_dev.transfer_result = -1000;     /* timeout */
+    return relay_dev.transfer_result;
+}</code></pre>
+
+<h3>Interrupt transfer mi, control transfer mi?</h3>
+<div class="scroll">
+<table>
+<tr><th></th><th>Interrupt OUT</th><th>Control (SET_REPORT)</th></tr>
+<tr><td>Kullanılan boru</td><td>Cihazın interrupt OUT endpoint'i</td><td>Endpoint 0 (her cihazda var)</td></tr>
+<tr><td>Fonksiyon</td><td><code>sceUsbdInterruptTransfer</code></td><td><code>sceUsbdControlTransfer</code></td></tr>
+<tr><td>Şart</td><td>Cihazda OUT endpoint olmalı</td><td>Her zaman çalışır</td></tr>
+<tr><td>Hız / verim</td><td>Daha iyi</td><td>Daha yavaş, ek yük var</td></tr>
+<tr><td>Bu projede</td><td><strong>Varsayılan yol</strong></td><td>Yedek yol</td></tr>
+</table>
+</div>
+<p>
+Kod ikisini de destekler, çünkü bazı HID cihazlarda interrupt OUT endpoint hiç yoktur —
+o zaman tek çare kontrol borusundan <code>SET_REPORT</code> isteği göndermektir.
+Kod bunu <code>seda_connect</code> içinde tespit edip not düşer.
+</p>
+
+<h2 id="rpc">5. EE ile IOP nasıl konuşuyor (SIF RPC)</h2>
+<p>
+İki işlemci arasında <strong>SIF</strong> adında bir donanım köprüsü var. Üzerinden
+uzaktan fonksiyon çağırma (RPC) yapılır: EE bir yapı doldurup gönderir, IOP işler,
+aynı yapıyı geri yollar. Tıpkı bir ağ isteği gibi ama iki çip arası.
+</p>
+
+<p>İki tarafın da bilmesi gereken ortak tanımlar tek başlıkta toplanmış:</p>
+
+<span class="fileref">seda_relay_rpc.h — iki taraf da bunu include eder</span>
+<pre><code>#define SEDA_RELAY_RPC_ID 0x5344524c   /* "SDRL" — servisin adresi */
+
+#define SEDA_RELAY_RPC_SEND_COMMAND 1
+#define SEDA_RELAY_RPC_GET_STATUS   2
+
+typedef struct {
+    int result;            /* IOP doldurur: işlem sonucu   */
+    int command;           /* EE doldurur:  1..20          */
+    int mode;              /* EE doldurur:  gönderim modu  */
+    int status;            /* IOP doldurur: bağlı mı?      */
+    int control_result;    /* teşhis için                  */
+    int interrupt_result;  /* teşhis için                  */
+} SedaRelayRpcPacket;</code></pre>
+
+<p><strong>IOP tarafı</strong> servisi kaydeder ve sonsuz bir döngüde istek bekler:</p>
+<pre><code>static void rpc_thread(void *arg)
+{
+    sceSifInitRpc(0);
+    sceSifSetRpcQueue(&amp;rpc_queue, GetThreadId());
+    sceSifRegisterRpc(&amp;rpc_server, SEDA_RELAY_RPC_ID,
+                      rpc_handler, &amp;rpc_buffer, NULL, NULL, &amp;rpc_queue);
+    sceSifRpcLoop(&amp;rpc_queue);      /* buradan asla çıkmaz */
+}</code></pre>
+
+<p><strong>EE tarafı</strong> önce servisi bulur (bind), sonra çağırır:</p>
+<pre><code>/* Bir kereye mahsus: servisi bul */
+SifBindRpc(&amp;relay_rpc, SEDA_RELAY_RPC_ID, 0);
+
+/* Her komutta: çağır */
+relay_rpc_packet.command = command;
+relay_rpc_packet.mode    = usb_send_mode;
+
+SifCallRpc(&amp;relay_rpc,
+           SEDA_RELAY_RPC_SEND_COMMAND,
+           0,                                  /* 0 = bitene kadar bekle */
+           &amp;relay_rpc_packet, sizeof(...),     /* gönderilen  */
+           &amp;relay_rpc_packet, sizeof(...),     /* geri gelen  */
+           NULL, NULL);</code></pre>
+
+<div class="warn">
+<p><strong>Neden <code>__attribute__((aligned(64)))</code> var?</strong>
+SIF köprüsü DMA ile çalışır ve DMA, verinin bellekte belirli bir sınıra hizalı
+olmasını ister. Hizalamayı unutursan veri bozulur veya hiç gitmez — üstelik
+hata mesajı da almazsın. Bu yüzden RPC ile taşınan her tampon hizalı tanımlanmış.
+Aynı sebeple <code>pad_buf</code> da 64'e hizalı.</p>
+</div>
+
+<p>
+Bind işleminin bir inceliği daha var: IRX yüklendikten hemen sonra RPC servisi
+henüz hazır olmayabilir. Kod bu yüzden <code>bind_relay_rpc()</code> içinde 120 kez
+deneyip aralarda <code>nopdelay()</code> ile bekliyor.
+</p>
+
+<h2 id="protokol">6. Röle kartının protokolü ve 12 mod meselesi</h2>
+<p>
+Kartın üreticisi protokolü yayınlamamış. Elde tek referans, Windows'ta çalışan
+C# programı vardı — <code>windows-test/SedaRelayHid.cs</code>:
+</p>
+
+<pre><code>byte[] outputBuffer = new byte[9];
+outputBuffer[0] = 0;          /* report ID */
+outputBuffer[1] = 1;
+outputBuffer[4] = command;
+writeRawReportToDevice(outputBuffer);</code></pre>
+
+<p>
+Buradaki problem şu: Windows'un HID sürücüsü, gönderilen tamponun ilk baytını
+<em>report ID</em> olarak yorumlar ve kabloya çıkarken bu baytı kendisi işler.
+Yani telde gerçekten ne gittiği, uygulamanın gördüğü diziden farklıdır. PS2'de ise
+paketi ham haliyle sen yazıyorsun. Bu belirsizlik yüzünden kodda iki farklı
+paket biçimi ve toplam <strong>12 gönderim modu</strong> var:
+</p>
+
+<pre><code>/* Biçim A — Windows tamponunun birebir kopyası */
+static void fill_seda_report(int command, int command_index)
+{
+    memset(relay_dev.report, 0, sizeof(relay_dev.report));
+    relay_dev.report[0] = 0x00;
+    relay_dev.report[1] = 0x01;
+    relay_dev.report[command_index] = (u8)command;   /* genelde index 4 */
+}
+
+/* Biçim B — report ID atılmış hali; ÇALIŞAN BU */
+static void fill_seda_payload_report(int command)
+{
+    memset(relay_dev.report, 0, sizeof(relay_dev.report));
+    relay_dev.report[0] = 0x01;
+    relay_dev.report[3] = (u8)command;
+}</code></pre>
+
+<p>
+Biçim B, Biçim A'nın bir bayt sola kaymış halidir — tam olarak Windows'un report ID'yi
+yutmasıyla açıklanan fark. Varsayılan mod bu yüzden
+<code>SEDA_RELAY_MODE_INT_PAYLOAD8</code> (mod 9): <strong>8 baytlık interrupt OUT, report ID yok.</strong>
+</p>
+
+<p>
+Diğer 11 mod birer teşhis aracı. Ayarlar ekranından mod değiştirip hangisinin
+tuttuğunu deneyebiliyorsun. <code>MODE_AUTO</code> (mod 0) ise kaba kuvvet uygular:
+uzunluk × rapor tipi × alıcı kombinasyonlarını sırayla dener, ilk tutanı kullanır.
+Bu döngü <code>seda_send_command</code> fonksiyonunun sonundadır.
+</p>
+
+<div class="note">
+<p><strong>Bundan çıkarılacak genel ders:</strong> dokümante olmayan bir USB cihazla
+çalışırken, doğru paketi tek denemede bulamazsın. Kodun içine
+"parametreleri değiştirilebilir bir deneme mekanizması" koymak — üstelik bunu
+cihazın kendi ekranından ayarlanabilir yapmak — her seferinde yeniden derleyip
+diske yazmaktan çok daha hızlıdır. Bu projedeki mod sistemi ve VID/PID
+düzenleme ekranı tam olarak bu yüzden var.</p>
+</div>
+
+<h2 id="donanim">7. Röle kartına bağlantı ve elektrik</h2>
+<p>
+Seda Elektronik kartta iki USB bağlantısı kullanılır: biri kartın 5 V güç beslemesi,
+diğeri HID veri bağlantısıdır. İkisi PS2 Slim'in iki USB portuna bağlıdır. Asıl motor
+gücü kartın <em>röle kontakları</em> tarafındadır; PS2 USB hattından gelmez.
+</p>
+
+<div class="flow">PS2 USB portu 1 ---- 5 V güç USB'si ----+
+PS2 USB portu 2 ---- HID veri USB'si ---+---- [ Seda 8'li röle kartı ]
+                                             |
+3S LiPo (+) ---- NO1..NO4                    |  ilk dört röle
+3S LiPo (-) ---- NC1..NC4                    |
+                                             v
+[COM1, COM2] ---- paralel iki sol RS-540 motorun iki ucu
+[COM3, COM4] ---- paralel iki sağ RS-540 motorun iki ucu
+
+Bir grupta tek röle ON: motor döner
+İki röle OFF: iki uç (-), motor durur
+İki röle ON:  iki uç (+), motor durur</div>
+
+<p>
+Rölenin üç ucu vardır ve mantığı şudur:
+</p>
+<div class="scroll">
+<table>
+<tr><th>Uç</th><th>Anlamı</th><th>Röle boştayken</th><th>Röle çekiliyken</th></tr>
+<tr><td><strong>COM</strong></td><td>Ortak uç</td><td colspan="2">Her zaman devrede</td></tr>
+<tr><td><strong>NO</strong></td><td>Normalde açık</td><td>Kopuk</td><td>COM'a bağlı</td></tr>
+<tr><td><strong>NC</strong></td><td>Normalde kapalı</td><td>COM'a bağlı</td><td>Kopuk</td></tr>
+</table>
+</div>
+<p>
+Bu aracın çift yön bağlantısında bütün <strong>NC</strong> uçları LiPo (−), bütün
+<strong>NO</strong> uçları LiPo (+) hattındadır. COM1-COM2 sol motor grubunun, COM3-COM4
+sağ motor grubunun uçlarına gider. Bu nedenle aynı grubun iki rölesinin birlikte ON
+olması besleme kısa devresi değildir; motorun iki ucunu da (+) yaparak motoru durdurur.
+</p>
+
+<div class="warn">
+<p><strong>Akım uyarısı — atlanırsa donanım yakar.</strong></p>
+<ul>
+<li>Mevcut Seda kartın ayrı 5 V güç USB'si PS2'nin bir USB portuna bağlıdır; HID veri
+kablosu ikinci USB portundadır. Kartın üretici akım gereksinimini ve PS2 portundaki
+5 V gerilimi yük altında ölç.</li>
+<li>Bobin ile mikrodenetleyici arasında mutlaka sürücü olmalı: ULN2003/ULN2803 veya
+transistör. Tercihen optokuplör ile galvanik izolasyon.</li>
+<li>Her bobinin uçlarına <strong>freewheel (snubber) diyot</strong> — bobin bırakırken
+oluşan ters gerilim spike'ı sürücü transistörünü öldürür. Hazır kartlarda genelde
+takılıdır ama kendi kartını yaparsan unutma.</li>
+<li>Bobin diyodu ile motor bastırmasını karıştırma. Motor polaritesi ters çevrildiği
+için motor uçlarına tek yönlü 1N5408 bağlanmaz; çift yönlü TVS veya uygun RC snubber gerekir.</li>
+<li>Şebeke gerilimi (220V) anahtarlıyorsan kart üzerinde düşük gerilim ve yüksek
+gerilim bölgeleri arasındaki mesafeye dikkat.</li>
+</ul>
+</div>
+
+<h2 id="dosya">8. Dosya dosya ne var</h2>
+<div class="scroll">
+<table>
+<tr><th>Dosya</th><th>Katman</th><th>Ne yapar</th></tr>
+<tr><td><code>main.c</code></td><td>EE</td><td>Uygulamanın tamamı: kol okuma, ekran, menüler, şifre, hafıza kartı, IRX yükleme, RPC çağrıları (~1090 satır)</td></tr>
+<tr><td><code>iop/seda_relay_irx.c</code></td><td>IOP</td><td>USB sürücüsü + RPC sunucusu. Asıl USB paketini gönderen yer (~640 satır)</td></tr>
+<tr><td><code>seda_relay_rpc.h</code></td><td>ortak</td><td>İki tarafın da include ettiği protokol tanımları: RPC ID, komut numaraları, paket yapısı, mod sabitleri</td></tr>
+<tr><td><code>iop/imports.lst</code></td><td>IOP</td><td>IRX'in dışarıdan kullandığı fonksiyonların listesi. Buraya yazmazsan linker "undefined reference" der</td></tr>
+<tr><td><code>usbd_irx.c</code><br><code>seda_relay_irx.c</code> (kök)</td><td>üretilen</td><td><strong>Elle düzenleme.</strong> <code>bin2c</code>'nin ürettiği dev C dizileri. Kök dizindeki <code>seda_relay_irx.c</code> ile <code>iop/</code> altındaki aynı isimli dosya farklı şeylerdir — biri kaynak, diğeri gömülü ikili</td></tr>
+<tr><td><code>Makefile</code> / <code>iop/Makefile</code></td><td>build</td><td>EE ve IOP derleme kuralları</td></tr>
+<tr><td><code>build.ps1</code></td><td>build</td><td>PS2SDK ortam değişkenlerini kurup <code>make</code> çağırır, çıktıyı <code>role.elf</code> yapar</td></tr>
+<tr><td><code>build-disc.ps1</code></td><td>build</td><td><code>xorriso</code> ile önyüklenebilir ISO üretir</td></tr>
+<tr><td><code>disc/SYSTEM.CNF</code></td><td>disk</td><td>PS2'ye "diskteki hangi dosyayı çalıştıracağım" der: <code>cdrom0:\ROLE.ELF</code></td></tr>
+<tr><td><code>windows-test/</code></td><td>referans</td><td>Aynı kartı Windows'ta süren C# programı. Protokolün doğrulama referansı</td></tr>
+<tr><td><code>run-pcsx2.ps1</code></td><td>geliştirme</td><td>ELF'i PCSX2 emülatöründe log dosyasıyla başlatır</td></tr>
+<tr><td><code>docs/</code></td><td>—</td><td>Bu rehber ile elektronik, faz planı ve batarya/güç belgeleri (Türkçe ve İngilizce)</td></tr>
+<tr><td><code>images/</code></td><td>—</td><td>Araç fotoğrafı, motor fotoğrafı ve üretilen görseller</td></tr>
+</table>
+</div>
+
+<h3>main.c içinde ilgi çekici birkaç yer</h3>
+<ul>
+<li><strong>Ekrana yazma:</strong> <code>log_printf()</code> aynı metni hem <code>printf</code>
+(emülatör/ps2client konsoluna) hem <code>scr_vprintf</code> (TV ekranına) basar. Teşhis için çok pratik.</li>
+<li><strong>Ayar dosyası:</strong> <code>mc0:SYS-CONF/ROLECFG.TXT</code> — düz metin,
+<code>mode=9</code> / <code>vid=178E</code> gibi satırlar. Binary format yerine metin
+seçilmiş, elle düzenlenebilir olması için.</li>
+<li><strong>Şifre ekranı:</strong> Ayarlara girmek için 12 tuşluk dizi
+(XXX □□□ △△△ ○○○). Amaç güvenlik değil, kullanıcının yanlışlıkla ayar bozmasını önlemek.</li>
+<li><strong>Tuş kenar tespiti:</strong> <code>current_buttons = 0xffff ^ buttons.btns;</code>
+— PS2'de kol tuşları <em>ters mantıkla</em> gelir (basılı = 0). XOR ile düzeltilir.
+Sonra <code>pressed = current &amp; ~previous</code> ile "yeni basıldı",
+<code>released = previous &amp; ~current</code> ile "yeni bırakıldı" bulunur.</li>
+</ul>
+
+<h2 id="derleme">9. Derleme ve çalıştırma</h2>
+<p>Derleme sırası önemlidir, çünkü EE tarafı IOP tarafının çıktısını içine gömer:</p>
+
+<div class="flow">iop/seda_relay_irx.c  --derle-->  iop/seda_relay.irx
+                                          |
+                                     bin2c ile C dizisine çevir
+                                          v
+                                  seda_relay_irx.c
+                                          |
+$(PS2SDK)/iop/irx/usbd.irx --bin2c-->  usbd_irx.c
+                                          |
+main.c + usbd_irx.c + seda_relay_irx.c ---+--> relay.elf
+                                                    |
+                                              role.elf (kopya)
+                                                    |
+                                    disc/ROLE.ELF + SYSTEM.CNF
+                                                    |
+                                            role-disc.iso</div>
+
+<p>Pratikte tek komut:</p>
+<pre><code>powershell -ExecutionPolicy Bypass -File build-disc.ps1</code></pre>
+
+<p>
+Bu betik önce <code>build.ps1</code>'i çağırır (PS2SDK yollarını ayarlar,
+<code>make clean</code> + <code>make</code> yapar), sonra MSYS2'nin
+<code>xorriso</code>'su ile ISO'yu üretir. Sadece ELF yeterliyse
+<code>build.ps1</code>'i tek başına çalıştırmak yeterli.
+</p>
+
+<p><code>relay.elf</code> geliştirici hata ayıklama bilgilerini korur.
+Hafıza kartına kopyalanacak <code>role.elf</code> ise aynı giriş adresi ve aynı çalışan
+LOAD segmenti korunarak otomatik olarak <code>--strip-debug</code> işleminden geçirilir.
+Bu nedenle dağıtım dosyası çok daha küçüktür; PS2'ye aktarırken daima
+<code>role.elf</code> kullan.</p>
+
+<div class="warn">
+<p><strong>Emülatör sınırı:</strong> PCSX2 ile programın kol, ekran, menü ve
+hafıza kartı kısımlarını test edebilirsin — loglarda bunların yüklendiği görülüyor.
+Ama <strong>gerçek USB cihaz geçişi emülatörde güvenilir değildir.</strong>
+Röle protokolünü ancak gerçek konsolda doğrulayabilirsin. Bu yüzden ekrandaki
+<code>result</code> / <code>status</code> / <code>ctrl</code> / <code>int</code>
+sayıları önemli: konsolda TV'ye bakarak hata ayıklamanın tek yolu onlar.</p>
+</div>
+
+<h2 id="programlama">10. Hareket programlama modu</h2>
+<p>Normal sürüşte <strong>START</strong> tuşu kayıt modunu açar ve güvenlik için bütün
+röleleri hemen kapatır. Bu modda hareket tuşları motorları anlık çalıştırmaz; en fazla
+128 adımlık RAM dizisine kaydedilir. <strong>X</strong>, <strong>Yuvarlak</strong>,
+<strong>Üçgen</strong> ve <strong>Kare</strong> sürüş hareketidir; <strong>R1</strong>
+bütün röleler kapalıyken bir saniye bekleme adımı ekler.</p>
+
+<p>İkinci <strong>START</strong> kaydı yürütür. Her kayıt bir saniyedir. Art arda aynı
+hareket varsa röle arada bırakılmaz; örneğin <code>X, X</code> iki saniye kesintisiz ileri
+gider. Her farklı hareketin sonunda bütün röleler kapatılır ve sıradaki hareket uygulanır.
+Program tamamlanınca kayıt temizlenir ve röleler kapalı kalır.</p>
+
+<p><strong>SELECT</strong> kayıt sırasında programı iptal eder; yürütme sırasında 10 ms
+aralıklarla okunarak acil durdurma görevi görür. Her iki durumda da tüm röleler kapatılır.
+Normal moddaki R1 ayar ekranı davranışı korunur. START+SELECT birleşimi PS2 ana menüsüne
+dönmeye devam eder.</p>
+
+<p><strong>Güvenli kapatma:</strong> Yazılım kartta doğrulanmamış toplu <code>0xFC</code>
+komutunu kullanmaz. Her tam kapatmada kartta doğrulanmış ayrı
+<code>17, 18, 19, 20</code> OFF komutlarını gönderir. Bir OFF komutu doğrulanamazsa
+program sonraki yönü enerjilendirmez. Böylece
+program geçişi, SELECT acil durdurması ve kontrolcü bağlantısının kopması aynı güvenli
+kapatma yolunu kullanır.</p>
+
+<h3>10.1 Röle ölü zamanı (dead time)</h3>
+<p>Bir yönden ters yöne geçerken röle kontakları aynı anda kapalı kalmamalı. Bu yüzden
+yazılım, canlı sürüşte bir röle kapatıldığı anda bütün kapatma işlemlerini tamamlayıp
+ayarlanabilir beklemeyi uygular; bundan sonra ters röle açılabilir. Program yürütmede
+bekleme, bir sonraki röleyi <strong>enerjilendirmeden hemen önce</strong> uygulanır.
+Varsayılan <strong>100 ms</strong>; ayar ekranındaki
+<code>Dead time</code> satırından SOL/SAĞ ile 10 ms adımlarla 0-1000 ms arasında
+değiştirilir ve hafıza kartına <code>deadms=</code> anahtarıyla kaydedilir.</p>
+
+<p>Bekleme yalnızca gerçekten borçluyken uygulanır:</p>
+<ul>
+<li>Canlı sürüşte enerjili bir röle bırakılırsa; buna <code>X</code> ile
+<code>Üçgen</code> kısa süre üst üste tutulduktan sonra birinin bırakılması da dahildir.</li>
+<li><code>relays_all_off()</code> çalıştıktan sonraki ilk enerjilendirmede — program
+yürütmede her adım arası bu yola girer.</li>
+</ul>
+<p>Canlı sürüşte bekleme röle kapanırken tamamlandığı için daha sonra yapılan bağımsız
+bir basışa ek gecikme eklenmez. Program yürütmede her farklı hareket adımı 1 sn açık + 100 ms ölü zaman olur;
+altı adımlık bir program yaklaşık 6,5 sn sürer.</p>
+
+<h3>10.2 Programı hafıza kartına kaydetme ve tek tuşla çağırma</h3>
+<p>Kayıt (programlama) modunda:</p>
+<ul>
+<li><strong>L1</strong> — o anki diziyi hafıza kartına yazar.</li>
+<li><strong>L2</strong> — kayıtlı diziyi karttan RAM'e geri yükler (üzerine ekleyip
+tekrar kaydedebilirsin).</li>
+</ul>
+<p>Normal sürüş ekranında <strong>L2</strong> tek tuşla kayıtlı programı karttan okur ve
+<em>hemen çalıştırır</em>. Kart boşsa veya dosya bozuksa uyarı verir, hiçbir röleye
+dokunmaz.</p>
+
+<p>Dosya <code>mc0:SYS-CONF/ROLEPRG.TXT</code> yolunda düz metindir:</p>
+<pre><code>ROLEPRG v1
+steps=XXOTSW</code></pre>
+<p>Harfler: <code>X</code> = X, <code>O</code> = Yuvarlak, <code>T</code> = Üçgen,
+<code>S</code> = Kare, <code>W</code> = bekleme. Okuyucu küçük harfi, aradaki virgül ve
+boşlukları da kabul eder; tanımadığı bir harf görürse dosyayı reddeder ve mevcut diziye
+dokunmaz. En fazla 128 adım okunur.</p>
+
+<h2 id="sozluk">11. Kısa sözlük</h2>
+<div class="scroll">
+<table>
+<tr><th>Terim</th><th>Anlamı</th></tr>
+<tr><td><strong>EE</strong></td><td>Emotion Engine — PS2'nin ana işlemcisi. Senin uygulaman burada</td></tr>
+<tr><td><strong>IOP</strong></td><td>I/O Processor — çevre birimlerini yöneten yardımcı işlemci. USB buraya bağlı</td></tr>
+<tr><td><strong>SIF</strong></td><td>Sub-system InterFace — EE ile IOP arasındaki DMA köprüsü</td></tr>
+<tr><td><strong>RPC</strong></td><td>Remote Procedure Call — bir işlemcinin diğerindeki fonksiyonu çağırması</td></tr>
+<tr><td><strong>IRX</strong></td><td>IOP'ta çalışan yüklenebilir modül (sürücü) formatı</td></tr>
+<tr><td><strong>ELF</strong></td><td>EE'de çalışan çalıştırılabilir dosya formatı</td></tr>
+<tr><td><strong>HID</strong></td><td>Human Interface Device — USB'nin klavye/mouse/joystick sınıfı. Röle kartı da bu sınıfı taklit ediyor</td></tr>
+<tr><td><strong>VID / PID</strong></td><td>Vendor ID / Product ID — USB cihazın kimlik numarası. Bu kartta 0x178E / 0x07D9</td></tr>
+<tr><td><strong>Descriptor</strong></td><td>Cihazın "kendini tanıttığı" veri yapıları: ben kimim, kaç arayüzüm var, hangi endpoint'lerim var</td></tr>
+<tr><td><strong>Endpoint</strong></td><td>USB cihazdaki veri kanalı. OUT = host'tan cihaza, IN = cihazdan host'a</td></tr>
+<tr><td><strong>Pipe</strong></td><td>Bir endpoint'e açılmış bağlantı tutamağı</td></tr>
+<tr><td><strong>Control transfer</strong></td><td>Endpoint 0 üzerinden yapılan, her cihazda bulunan kurulum/komut transferi</td></tr>
+<tr><td><strong>Interrupt transfer</strong></td><td>Küçük ve düzenli veri için ayrılmış hızlı kanal. HID'in normal yolu</td></tr>
+<tr><td><strong>Semafor</strong></td><td>İki iş parçacığı arasında "bitti mi?" haberleşmesi için sayaç</td></tr>
+<tr><td><strong>bin2c</strong></td><td>İkili dosyayı C kaynak dizisine çeviren PS2SDK aracı</td></tr>
+<tr><td><strong>Latch</strong></td><td>Bir çıkışın, sen değiştirene kadar durumunu koruması</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="ozet">Özet: aklında kalması gerekenler</h2>
+<ol>
+<li>PS2'de USB'ye <strong>EE değil IOP</strong> erişir. Projenin ikiye bölünmüş olmasının tek sebebi budur.</li>
+<li>İki taraf <strong>SIF RPC</strong> ile konuşur; taşınan yapı <code>seda_relay_rpc.h</code>'de tanımlıdır ve DMA yüzünden hizalı olmak zorundadır.</li>
+<li>USB'den veri göndermek özünde üç adımdır: <strong>probe</strong> (bu cihaz benim mi) → <strong>openPipe</strong> (boru aç) → <strong>transfer</strong> (yaz ve callback'i bekle).</li>
+<li>USB transferleri <strong>asenkrondur</strong>; fonksiyon dönmesi işin bittiği anlamına gelmez.</li>
+<li>Kart 8 baytlık interrupt OUT paketi bekler: <code>byte[0]=0x01</code>, <code>byte[3]=komut</code>.</li>
+<li>Röle bobinleri <strong>USB'den beslenmez</strong>; ayrı besleme + sürücü + freewheel diyot şarttır.</li>
+<li>Yeni bir HID cihaz (örneğin PIC18F4550 veya PIC16F1455 ile yapacağın kart) aynı paket formatını uygularsa, PS2 tarafında <strong>tek satır kod değiştirmeden</strong> çalışır — VID/PID'yi ayarlar ekranından girmen yeterlidir.</li>
+</ol>
+
+<footer>
+PS2 USB Röle Projesi — teknik anlama rehberi · <code>C:\ps2dev\projeler\role</code>
+</footer>
+
+</main>
+</body>
+</html>

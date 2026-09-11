@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS2 Robot Araç — Faz Planı</title>
+<style>
+:root{
+  --bg:#ffffff; --ink:#1f2933; --muted:#5c6b7a; --line:#dde3ea;
+  --soft:#f5f7fa; --accent:#0f766e; --accent-soft:#e6f4f1;
+  --warn:#a15c07; --warn-soft:#fdf6e7; --code-bg:#1e2430; --code-ink:#e6edf3;
+  --ok:#15803d; --ok-soft:#e7f5ec; --risk:#b42318; --risk-soft:#fdeceb;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#12161c; --ink:#e6edf3; --muted:#9aa7b4; --line:#2a323d;
+    --soft:#1a2029; --accent:#5eead4; --accent-soft:#14302c;
+    --warn:#fbbf24; --warn-soft:#2e2410; --code-bg:#0c1017; --code-ink:#e6edf3;
+    --ok:#4ade80; --ok-soft:#122a1a; --risk:#f87171; --risk-soft:#2d1514;
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.65 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+main{max-width:860px;margin:0 auto;padding:36px 22px 72px}
+h1{font-size:29px;line-height:1.2;margin:0 0 6px}
+h2{font-size:21px;margin:46px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+h3{font-size:16px;margin:22px 0 6px}
+p{margin:11px 0}
+.lead{color:var(--muted);font-size:17px;margin:0 0 22px}
+code{
+  font-family:Consolas,"SF Mono",Menlo,monospace;font-size:.88em;
+  background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:1px 5px;
+}
+pre{
+  background:var(--code-bg);color:var(--code-ink);padding:15px;border-radius:8px;
+  overflow-x:auto;font-family:Consolas,monospace;font-size:13px;line-height:1.55;
+}
+pre code{background:none;border:none;padding:0;color:inherit}
+.phase{
+  border:1px solid var(--line);border-radius:10px;
+  padding:18px 20px;margin:18px 0;background:var(--soft);
+}
+.phase-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.num{
+  font-size:12px;font-weight:800;letter-spacing:.08em;
+  background:var(--accent);color:var(--bg);padding:3px 9px;border-radius:20px;
+}
+@media (prefers-color-scheme: dark){ .num{color:#0c1017} }
+.phase h3{margin:0;font-size:18px}
+.chip{
+  font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:4px;
+  text-transform:uppercase;letter-spacing:.04em;
+}
+.c-ok{background:var(--ok-soft);color:var(--ok)}
+.c-mid{background:var(--warn-soft);color:var(--warn)}
+.c-hard{background:var(--risk-soft);color:var(--risk)}
+.goal{
+  font-size:14.5px;color:var(--muted);border-left:3px solid var(--line);
+  padding-left:12px;margin:10px 0 14px;
+}
+.note,.warn{
+  border-left:4px solid var(--accent);background:var(--accent-soft);
+  padding:11px 15px;border-radius:0 6px 6px 0;margin:16px 0;font-size:15px;
+}
+.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p:first-child,.warn p:first-child{margin-top:0}
+.note p:last-child,.warn p:last-child{margin-bottom:0}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14.5px}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+.scroll{overflow-x:auto}
+.scroll table{min-width:480px}
+ul,ol{padding-left:22px;margin:10px 0}
+li{margin:5px 0}
+.flow{
+  font-family:Consolas,monospace;font-size:12.5px;line-height:1.7;
+  background:var(--code-bg);color:var(--code-ink);
+  padding:16px;border-radius:8px;overflow-x:auto;white-space:pre;
+}
+footer{margin-top:50px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<main>
+
+<h1>PS2 Robot Araç — Faz Planı</h1>
+<p class="lead">
+Hedef: adaptörlü + FreeMCBoot'lu PS2 Slim'i LiPo bataryayla prizden kurtarıp
+4 tekerlekli, PC'den kablosuz kontrol edilen, EyeToy kameralı bir robot araca dönüştürmek.
+Röle kartı ve yazılımı <strong>zaten çalışıyor</strong> — bu plan onun üstüne inşa ediyor.
+</p>
+
+<div class="note">
+<p><strong>Planın tek kuralı:</strong> her fazın sonunda <em>çalışan bir şey</em> olmalı.
+Aylarca hiçbir şeyin çalışmadığı bir yığınla uğraşmamak için fazlar bu şekilde bölündü.
+Faz 3 tıkanırsa bile elinde sürülebilen bir araç kalır.</p>
+</div>
+
+<h2>Genel bakış</h2>
+<div class="scroll">
+<table>
+<tr><th>Faz</th><th>Ne kazanırsın</th><th>Yeni kod</th><th>Zorluk</th></tr>
+<tr><td>1 · Araç yürüsün</td><td>Kolla sürülen, pille çalışan araç</td><td>Yok</td><td>Kolay</td></tr>
+<tr><td>2 · Kablosuz kontrol</td><td>PC'den sürülen araç</td><td>Orta</td><td>Orta</td></tr>
+<tr><td>3 · Kamera araştırması</td><td>Kararın netleşmesi</td><td>Az (teşhis aracı)</td><td>Belirsiz</td></tr>
+<tr><td>4 · Tek kare</td><td>PC'de ilk fotoğraf</td><td>Çok</td><td>Zor</td></tr>
+<tr><td>5 · MJPEG akışı</td><td>Canlı yayın</td><td>Az (4 bitmişse)</td><td>Orta</td></tr>
+</table>
+</div>
+
+<h2>Fazlar</h2>
+
+<div class="phase">
+<div class="phase-head">
+  <span class="num">FAZ 1</span>
+  <h3>Araç yürüsün</h3>
+  <span class="chip c-ok">Kolay · Kod yok</span>
+</div>
+<p class="goal">Bitince: LiPo ile çalışan, DualShock ile sürdüğün 4 tekerlekli bir araba.</p>
+
+<p>Bu faz tamamen <strong>elektrik ve şasi işi</strong>. Mevcut <code>role.elf</code> olduğu gibi kullanılıyor.</p>
+
+<h3>Güç mimarisi</h3>
+<div class="flow">[3S LiPo]---[buck 8.5V]---&gt; PS2 Slim
+                                     |
+[Motor LiPo]---[motor sürücü]---&gt; motorlar
+                                     |
+              GND'ler burada birleşir (SADECE GND)</div>
+
+<p><strong>En kritik karar:</strong> PS2 ve motorlar ayrı batarya paketlerinden beslenir.</p>
+
+<div class="warn">
+<p>Motorlar kalkışta ve yön değiştirirken yüksek akım çeker, besleme gerilimi bir anlığına düşer.
+Aynı paketi paylaşırlarsa <strong>PS2 her hareket başlangıcında resetlenir</strong>.
+Bu tek karar projenin çalışıp çalışmamasını belirler.</p>
+</div>
+
+<ul>
+<li>PS2 adaptörünün etiketine bak (Slim'de tipik olarak 8.5V) — buck konvertörü ona göre ayarla</li>
+<li>Buck'ı bol marjla seç: PS2'nin çektiği akımın en az <strong>iki katı</strong> kapasiteli olsun</li>
+<li><strong>Düşük voltaj koruması şart</strong> — LiPo hücresi 3.0V altına inerse paket kalıcı ölür</li>
+<li>Kaba tahmin: 3S 5000mAh (~55Wh) paket, 15-25W tüketimde <strong>2 saat civarı</strong></li>
+</ul>
+
+<h3>Motor bağlantısı (mevcut röle kartıyla)</h3>
+<div class="scroll">
+<table>
+<tr><th>Röle</th><th>Görev</th><th>Tuş</th></tr>
+<tr><td>1</td><td>Sol motor ileri</td><td>X</td></tr>
+<tr><td>2</td><td>Sol motor geri</td><td>Kare</td></tr>
+<tr><td>3</td><td>Sağ motor ileri</td><td>Üçgen</td></tr>
+<tr><td>4</td><td>Sağ motor geri</td><td>Yuvarlak</td></tr>
+</table>
+</div>
+<p>
+Tank tipi dönüş: bir taraf ileri, diğeri geri. Kart 8 kanallı, 4'ü boşta — ışık/korna için kalsın.
+</p>
+<p>
+<strong>Sınırını bil:</strong> rölede hız kontrolü yok, ya tam gaz ya duruş. Röleler mekanik,
+saniyede birkaç kez tıklatırsan kontaklar aşınır. Hız kontrolü Faz 1'in konusu değil.
+</p>
+</div>
+
+<div class="phase">
+<div class="phase-head">
+  <span class="num">FAZ 2</span>
+  <h3>Kablosuz kontrol</h3>
+  <span class="chip c-mid">Orta</span>
+</div>
+<p class="goal">Bitince: PC'den klavye/gamepad ile sürdüğün araç. Kol kablosu yok.</p>
+
+<h3>Donanım</h3>
+<p>
+PS2 Slim'in <strong>Ethernet portu zaten var</strong> (arkada, dahili SMAP/DEV9 donanımı).
+Kablosuz yapmak için araca küçük bir <strong>WiFi köprüsü</strong> bindirilir —
+client/bridge modunda çalışan mini router. PS2 kablolu bağlandığını sanır.
+</p>
+<div class="flow">PS2 [Ethernet] ---kablo--- [WiFi köprü] ))) WiFi ((( [PC]
+                              (araç üstünde,
+                               5V ile beslenir)</div>
+<p>
+Bu, <strong>USB tüketmez</strong> — iki USB portu röle kartı ve EyeToy'a kalır.
+Köprünün 5V beslemesini ana LiPo'dan küçük bir buck ile al, PS2'nin USB portundan alma.
+</p>
+
+<h3>Yazılım</h3>
+<ul>
+<li><code>ps2ip.irx</code> + <code>ps2smap.irx</code> yüklenir (usbd.irx gibi ELF'e gömülür)</li>
+<li><code>main.c</code> içindeki tuş okuma döngüsünün yanına bir <strong>TCP dinleyici</strong> eklenir</li>
+<li>Gelen bayt doğrudan mevcut <code>relay_send_command()</code> fonksiyonuna verilir</li>
+<li><strong>IOP sürücüsüne, RPC katmanına, paket formatına hiç dokunulmaz</strong></li>
+<li>Kol paralel çalışmaya devam eder — ağ koparsa elle müdahale edebilirsin</li>
+</ul>
+
+<div class="note">
+<p><strong>Bonus:</strong> Ağ çalışır hale geldiğinde uLaunchELF'in dahili FTP sunucusuyla
+PC'den <code>mc0:</code>, <code>mass:</code> gibi yerlere erişebilirsin. Ayrı iş değil, hediye.</p>
+</div>
+
+<div class="warn">
+<p><strong>Güvenlik davranışı ekle:</strong> ağ bağlantısı koparsa motorlar durmalı.
+Belirli bir süre (örn. 1 sn) komut gelmezse <code>relays_all_off()</code> çağır.
+Yoksa WiFi kesildiğinde araç son komutla gitmeye devam eder.</p>
+</div>
+</div>
+
+<div class="phase">
+<div class="phase-head">
+  <span class="num">FAZ 3</span>
+  <h3>Kamera araştırması</h3>
+  <span class="chip c-hard">Belirsiz · Kritik karar noktası</span>
+</div>
+<p class="goal">Bitince: Faz 4'ün haftalar mı aylar mı süreceğini biliyorsun.</p>
+
+<p>Burada <strong>kod yazmadan önce cevaplanacak tek soru</strong> var:</p>
+<p style="font-size:17px"><strong>PS2 homebrew tarafında kullanılabilir bir EyeToy sürücüsü var mı?</strong></p>
+
+<div class="scroll">
+<table>
+<tr><th>Cevap</th><th>Sonuç</th></tr>
+<tr><td>Var, çalışıyor</td><td>Faz 4 birkaç haftaya iner</td></tr>
+<tr><td>Kısmen var / eski</td><td>Uyarlama işi, orta</td></tr>
+<tr><td>Yok</td><td>Sıfırdan sürücü — projenin en büyük kalemi</td></tr>
+</table>
+</div>
+
+<h3>EyeToy teknik profili</h3>
+<div class="scroll">
+<table>
+<tr><td>VID / PID</td><td><code>0x054C</code> / <code>0x0154</code> veya <code>0x0155</code> (iki revizyon)</td></tr>
+<tr><td>Yonga</td><td>OmniVision <strong>OV519</strong></td></tr>
+<tr><td>Çözünürlük</td><td>320×240 @ 30fps · 640×480 @ 15fps</td></tr>
+<tr><td>Transfer tipi</td><td><strong>Isochronous</strong> (<code>sceUsbdIsochronousTransfer</code>)</td></tr>
+<tr><td>Ekstra</td><td>Dahili mikrofon var</td></tr>
+</table>
+</div>
+
+<div class="note">
+<p><strong>Projeyi kurtaran detay:</strong> USB 1.1 bandı 12 Mbps, ham 320×240 görüntü ise
+~4.6 MB/s eder — sığmaz. Yani kamera veriyi <strong>sıkıştırarak</strong> yollamak zorunda ve yolluyor.
+Format JPEG'e çok yakın, sadece başlıklar ve kuantizasyon tabloları çıkarılmış.</p>
+<p>Sonuç: <strong>PS2'nin görüntüyü çözmesine gerek yok.</strong> Doğru başlığı önüne ekleyip
+baytları olduğu gibi ağdan geçirirsin, çözme işini PC yapar. 36 MHz'lik IOP'a JPEG
+decoder yazmaktan kurtulursun.</p>
+</div>
+
+<h3>Bu fazın çıktısı: descriptor dökümcüsü</h3>
+<p>
+Sürücü değil, <strong>teşhis aracı</strong> yaz. Röle sürücüsündeki <code>probe</code>
+iskeletini kopyala, EyeToy'u tanı ve gördüğü her descriptor'ı ekrana bas:
+arayüzler, endpoint'ler, isochronous paket boyutları, alternate setting'ler.
+</p>
+<p>
+~150 satır, düşük risk, ve <strong>gerçekte neyle uğraştığını</strong> söyler.
+Seda kartında "12 mod deneyip tutanı bul" yaklaşımın işe yaramıştı — aynı alışkanlık burada da geçerli.
+</p>
+</div>
+
+<div class="phase">
+<div class="phase-head">
+  <span class="num">FAZ 4</span>
+  <h3>Tek kare</h3>
+  <span class="chip c-hard">Zor · Projenin kalbi</span>
+</div>
+<p class="goal">Bitince: PC ekranında EyeToy'dan gelen tek bir fotoğraf. Akış değil, tek kare.</p>
+
+<p>Akışa atlama. Tek kare çalıştığında zor kısım bitmiş olur; gerisi tekrardan ibaret.</p>
+
+<ol>
+<li>OV519 register'larını başlat (çözünürlük, format, kare hızı)</li>
+<li>Isochronous endpoint'ten paketleri al</li>
+<li>Paketleri birleştirip tam kareyi topla (kare sınırlarını bul)</li>
+<li>JPEG başlığı + kuantizasyon tablosu ekleyip geçerli dosya yap</li>
+<li>SIF RPC ile EE'ye taşı</li>
+<li>TCP ile PC'ye gönder</li>
+</ol>
+
+<div class="warn">
+<p><strong>Fotoğrafı hafıza kartına yazma.</strong> 8 MB kapasite, ~100-150 KB/s yazma hızı,
+sınırlı flash ömrü — ve o kartın üstünde FreeMCBoot'un duruyor. Bozulursa konsol açılmaz.
+Görüntü doğrudan ağdan aksın; ara depolama gereksiz bir adım.</p>
+</div>
+</div>
+
+<div class="phase">
+<div class="phase-head">
+  <span class="num">FAZ 5</span>
+  <h3>MJPEG akışı</h3>
+  <span class="chip c-mid">Orta · Faz 4 bittiyse kolay</span>
+</div>
+<p class="goal">Bitince: PC tarayıcısında canlı görüntü, ek yazılım kurmadan.</p>
+
+<p>
+Kareleri arka arkaya <strong>MJPEG over HTTP</strong> olarak yolla. IP kameraların
+onlarca yıldır kullandığı yöntem — tarayıcı hiçbir eklenti olmadan gösterir:
+</p>
+<pre><code>&lt;img src="http://192.168.1.50:8080/stream"&gt;</code></pre>
+
+<div class="flow">EyeToy --iso--&gt; IOP --SIF--&gt; EE --TCP--&gt; WiFi köprü --&gt; tarayıcı
+     (sıkıştırılmış)    (başlık eklenmiş)              (MJPEG)</div>
+
+<h3>Gerçekçi tavan</h3>
+<div class="scroll">
+<table>
+<tr><th></th><th>Beklenti</th><th>Neden</th></tr>
+<tr><td>Çözünürlük</td><td>320×240</td><td>USB 1.1 bandı + IOP kapasitesi</td></tr>
+<tr><td>Kare hızı</td><td>10-15 fps</td><td>Ağ yığını ve SIF aktarımı</td></tr>
+<tr><td>Gecikme</td><td>200-500 ms</td><td>Köprü + ps2ip + tarayıcı tamponu</td></tr>
+</table>
+</div>
+
+<div class="warn">
+<p><strong>Yarım saniye gecikmeyle araç sürülmez</strong> — duvara çarparsın.
+Aracı "canlı görüntüye bakarak sür" diye tasarlama.
+<strong>"İlerle → dur → bak → tekrar ilerle"</strong> modelini kur,
+ya da mesafe sensörü koyup PS2'ye kendi kendine durma refleksi ver.</p>
+</div>
+</div>
+
+<h2>Sonraki adım: tek USB portta toplama</h2>
+<p>
+Faz 1-2 mevcut röle kartıyla yürür. Ama EyeToy ikinci portu aldığında
+<strong>başka hiçbir şey takamazsın</strong> ve USB hub'a bel bağlanmaz
+(<code>usbd.irx</code>'in hub desteği güvenilmez, üstelik güç bütçesini yer).
+</p>
+<p>
+Kalıcı çözüm: röle kartını <strong>kendi HID mikrodenetleyici kartınla</strong> değiştirmek
+(PIC18F4550 veya PIC16F1455). Tek portta röleler + motor PWM'i + mesafe sensörü + batarya
+voltaj ölçümü toplanır, ikinci port EyeToy'a kalır.
+</p>
+<p>
+Kart, mevcut 8 baytlık paket formatını (<code>byte[0]=0x01</code>, <code>byte[3]=komut</code>)
+uygularsa <strong>PS2 tarafında tek satır kod değişmez</strong> — VID/PID'yi ayarlar
+ekranından girmek yeterli. Bu yüzden robot projesinde bu kart "güzel olurdu"dan
+"gerekli"ye terfi ediyor.
+</p>
+
+<footer>
+PS2 Robot Araç faz planı · <code>C:\ps2dev\projeler\role</code><br>
+Mimari ve kod açıklaması için: <code>PROJE_REHBERI.html</code>
+</footer>
+
+</main>
+</body>
+</html>

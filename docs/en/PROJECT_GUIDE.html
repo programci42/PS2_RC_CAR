@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS2 USB Relay Project — Technical Guide</title>
+<style>
+:root{
+  --bg:#ffffff; --ink:#1f2933; --muted:#5c6b7a; --line:#dde3ea;
+  --soft:#f5f7fa; --accent:#0f766e; --accent-soft:#e6f4f1;
+  --warn:#a15c07; --warn-soft:#fdf6e7; --code-bg:#1e2430; --code-ink:#e6edf3;
+  --ee:#2563eb; --iop:#7c3aed; --usb:#0f766e; --hw:#b45309;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#12161c; --ink:#e6edf3; --muted:#9aa7b4; --line:#2a323d;
+    --soft:#1a2029; --accent:#5eead4; --accent-soft:#14302c;
+    --warn:#fbbf24; --warn-soft:#2e2410; --code-bg:#0c1017; --code-ink:#e6edf3;
+    --ee:#7ba7f7; --iop:#b794f6; --usb:#5eead4; --hw:#fbbf24;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:16px/1.65 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+main{max-width:900px;margin:0 auto;padding:36px 22px 80px}
+h1{font-size:30px;line-height:1.2;margin:0 0 6px}
+h2{
+  font-size:22px;margin:52px 0 14px;padding-bottom:8px;
+  border-bottom:2px solid var(--line);scroll-margin-top:20px;
+}
+h3{font-size:17px;margin:28px 0 8px}
+p{margin:12px 0}
+.lead{color:var(--muted);font-size:17px;margin:0 0 24px}
+code{
+  font-family:Consolas,"SF Mono",Menlo,monospace;font-size:.88em;
+  background:var(--soft);border:1px solid var(--line);
+  border-radius:4px;padding:1px 5px;
+}
+pre{
+  background:var(--code-bg);color:var(--code-ink);
+  padding:16px;border-radius:8px;overflow-x:auto;
+  font-family:Consolas,"SF Mono",Menlo,monospace;font-size:13.5px;line-height:1.55;
+}
+pre code{background:none;border:none;padding:0;color:inherit;font-size:inherit}
+.fileref{
+  display:block;font-size:12.5px;color:var(--muted);
+  margin:14px 0 4px;font-family:Consolas,monospace;
+}
+.note,.warn{
+  border-left:4px solid var(--accent);background:var(--accent-soft);
+  padding:12px 16px;border-radius:0 6px 6px 0;margin:18px 0;
+}
+.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p:first-child,.warn p:first-child{margin-top:0}
+.note p:last-child,.warn p:last-child{margin-bottom:0}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14.5px}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scroll table{min-width:520px}
+ul,ol{padding-left:22px}
+li{margin:6px 0}
+.toc{
+  background:var(--soft);border:1px solid var(--line);
+  border-radius:8px;padding:16px 20px;margin:26px 0;
+}
+.toc ol{margin:6px 0 0;padding-left:20px}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.layer{
+  border:1px solid var(--line);border-left-width:5px;
+  border-radius:0 8px 8px 0;padding:14px 18px;margin:14px 0;background:var(--soft);
+}
+.layer h3{margin-top:0}
+.l-ee{border-left-color:var(--ee)}
+.l-iop{border-left-color:var(--iop)}
+.l-usb{border-left-color:var(--usb)}
+.l-hw{border-left-color:var(--hw)}
+.tag{
+  display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;padding:2px 7px;border-radius:4px;
+  background:var(--accent-soft);color:var(--accent);margin-left:8px;vertical-align:2px;
+}
+.flow{
+  font-family:Consolas,monospace;font-size:13px;line-height:1.7;
+  background:var(--code-bg);color:var(--code-ink);
+  padding:18px;border-radius:8px;overflow-x:auto;white-space:pre;
+}
+hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+footer{margin-top:56px;color:var(--muted);font-size:13.5px}
+</style>
+</head>
+<body>
+<main>
+
+<h1>PS2 USB Relay Project</h1>
+<p class="lead">
+This document explains what the project in this repository does, how it is
+structured, and — in its simplest form — how data is sent from a PlayStation 2 to a
+USB device. The goal is not to memorise every line of code, but to answer
+<strong>why each piece exists</strong>.
+</p>
+
+<div class="note">
+<p><strong>Videos:</strong> the finished vehicle in action —
+<a href="https://www.youtube.com/shorts/x-vaeMoXdgk">YouTube short 1</a> ·
+<a href="https://www.youtube.com/shorts/5uW2evH4y8U">YouTube short 2</a></p>
+</div>
+
+<div class="toc">
+<strong>Contents</strong>
+<ol>
+  <li><a href="#genel">The project in one sentence</a></li>
+  <li><a href="#katman">Four layers — who does what</a></li>
+  <li><a href="#akis">What happens when you press a button (end to end)</a></li>
+  <li><a href="#usb">Sending data over USB — the simplest form</a></li>
+  <li><a href="#rpc">How the EE talks to the IOP (SIF RPC)</a></li>
+  <li><a href="#protokol">The relay board protocol and the "12 modes" story</a></li>
+  <li><a href="#donanim">Wiring and electrical notes</a></li>
+  <li><a href="#dosya">File by file</a></li>
+  <li><a href="#derleme">Building and running</a></li>
+  <li><a href="#programlama">Motion programming mode</a></li>
+  <li><a href="#sozluk">Short glossary</a></li>
+</ol>
+</div>
+
+<h2 id="genel">1. The project in one sentence</h2>
+<p>
+A homebrew application that drives a <strong>Seda Elektronik 8-channel HID relay board</strong>
+plugged into the PlayStation 2's USB port, using the DualShock controller. Hold a button and the
+relay closes; release it and the relay opens.
+</p>
+<p>The vehicle has four RS-540 motors: the two left motors are wired in parallel as one group,
+the two right motors as another. Relays 1–2 drive the two terminals of the left group, relays
+3–4 the two terminals of the right group.</p>
+<div class="scroll">
+<table>
+<tr><th>Button</th><th>Motion</th><th>ON relays</th><th>OFF commands</th></tr>
+<tr><td>Cross (X)</td><td>Forward</td><td>1 + 3</td><td>17 + 19</td></tr>
+<tr><td>Square</td><td>Tank turn left</td><td>2 + 3</td><td>18 + 19</td></tr>
+<tr><td>Triangle</td><td>Reverse</td><td>2 + 4</td><td>18 + 20</td></tr>
+<tr><td>Circle</td><td>Tank turn right</td><td>1 + 4</td><td>17 + 20</td></tr>
+<tr><td colspan="2">Controller unplugged / restart</td><td colspan="2"><code>17, 18, 19, 20</code> = switch every relay off individually</td></tr>
+</table>
+</div>
+<p>
+The board is identified by <code>VID 0x178E / PID 0x07D9</code>. These values can be changed
+from inside the program (settings screen) and are saved to the memory card.
+</p>
+
+<h2 id="katman">2. Four layers — who does what</h2>
+<p>
+Driving a USB device on the PS2 is not a single-file job, because the console contains
+<strong>two separate processors</strong> and the USB hardware is attached to only one of them.
+That is the sole reason for the project's odd-looking split.
+</p>
+
+<div class="layer l-ee">
+<h3>EE — Emotion Engine <span class="tag">main.c</span></h3>
+<p>
+The main CPU (MIPS R5900, 300 MHz). Your "application" runs here: printing to the screen,
+reading the controller, menus, memory card, the password screen.
+<strong>It cannot access the USB hardware directly.</strong>
+</p>
+</div>
+
+<div class="layer l-iop">
+<h3>IOP — I/O Processor <span class="tag">iop/seda_relay_irx.c</span></h3>
+<p>
+The helper CPU (MIPS R3000, 36 MHz — in fact the PS1's CPU). All peripherals — USB, memory
+card, disc drive, audio — hang off this chip. This is the side that physically sends the USB
+packet. Modules that run on the IOP have the <code>.irx</code> extension.
+</p>
+</div>
+
+<div class="layer l-usb">
+<h3>usbd.irx <span class="tag">Sony's stock module</span></h3>
+<p>
+Sony's USB host stack. When a device is plugged in it enumerates it, reads the descriptors
+and exposes the <code>sceUsbd*</code> functions. You do not write this; you take it from
+PS2SDK and embed it inside the ELF.
+</p>
+</div>
+
+<div class="layer l-hw">
+<h3>Relay board <span class="tag">hardware</span></h3>
+<p>
+Appears as a USB HID device. Its microcontroller looks at the incoming one-byte command and
+closes or opens the matching relay. The relays keep their state inside the board (latched).
+</p>
+</div>
+
+<div class="note">
+<p><strong>Why are the IRX modules embedded in the ELF?</strong> So the program can run from a
+disc or a USB stick. If the <code>.irx</code> files were kept separately, the program would
+have the "where on disk do I find them?" problem. The <code>bin2c</code> tool turns an IRX file
+into a C array (<code>unsigned char usbd_irx[] = {...}</code>) and the program loads it from
+memory. One file, zero dependencies.</p>
+</div>
+
+<h2 id="akis">3. What happens when you press a button</h2>
+<p>The path from pressing Cross to the relay going "click":</p>
+
+<div class="flow">[1]  padRead()                    EE   read controller state
+      |
+[2]  pressed_buttons & PAD_CROSS  EE   "newly pressed" detection
+      |
+[3]  relay_set(0, 1)              EE   relay 0, state ON
+      |                                 command = 1 is chosen
+[4]  SifCallRpc(...)              EE   ---> send the call to the IOP
+      |                                     (SIF hardware bridge)
+[5]  rpc_handler()                IOP  call is received
+      |
+[6]  seda_send_command(1, mode)   IOP  8-byte report is prepared
+      |                                 byte[0]=0x01, byte[3]=0x01
+[7]  sceUsbdInterruptTransfer()   IOP  ---> usbd.irx
+      |
+[8]  USB interrupt OUT packet     USB  ---> over the cable to the board's
+      |                                     interrupt endpoint
+[9]  board decodes the command    HW   relay 1 closes
+      |
+[10] transfer_done() callback     IOP  result comes back
+      |
+[11] SifCallRpc returns           EE   result/status printed on screen</div>
+
+<p>
+When the button is released the same path is repeated with command <code>17</code>. The
+key point: the program <strong>does not send a command every loop</strong>, only when the
+state changes. The code guarantees that like this:
+</p>
+
+<span class="fileref">main.c — relay_set()</span>
+<pre><code>static void relay_set(int relay, int enabled)
+{
+    u8 command;
+
+    if (relay &lt; 0 || relay &gt;= RELAY_COUNT) return;
+
+    /* Nothing to do if the state is already the same.
+       Without this, hundreds of USB packets per second would go out. */
+    if (relay_state[relay] == (enabled ? 1 : 0)) return;
+
+    relay_state[relay] = enabled ? 1 : 0;
+    command = enabled ? relay_on_command[relay] : relay_off_command[relay];
+
+    relay_send_command(command);
+    show_relay_event(relay, enabled, command);
+}</code></pre>
+
+<p>
+In addition, if the controller is unplugged or the link breaks, <code>relays_all_off()</code>
+is called. This is a safety behaviour: no relay should stay energised when the controller is
+gone.
+</p>
+
+<h2 id="usb">4. Sending data over USB — the simplest form</h2>
+<p>
+Strip away the rest of the project (menus, password, memory card) and sending data from a
+PS2 to a USB HID device is really <strong>three steps</strong>.
+</p>
+
+<h3>Step 1 — Recognise the device (probe)</h3>
+<p>
+For every new USB device, <code>usbd.irx</code> calls your driver's <code>probe</code>
+function and asks "is this device yours?". Return 1 and the device is yours.
+</p>
+
+<span class="fileref">iop/seda_relay_irx.c — simplified</span>
+<pre><code>static int seda_probe(int dev_id)
+{
+    UsbDeviceDescriptor *dev;
+
+    /* Read the device's identity card */
+    dev = sceUsbdScanStaticDescriptor(dev_id, NULL, USB_DT_DEVICE);
+    if (!dev) return 0;
+
+    /* Is this the device I am looking for? */
+    if (dev-&gt;idVendor != target_vid || dev-&gt;idProduct != target_pid)
+        return 0;
+
+    return 1;   /* yes, it is mine */
+}</code></pre>
+
+<h3>Step 2 — Connect and open a "pipe"</h3>
+<p>
+On USB, data flows through channels called endpoints. To write to an endpoint you first need
+a handle from <code>sceUsbdOpenPipe</code>.
+</p>
+
+<span class="fileref">iop/seda_relay_irx.c — simplified</span>
+<pre><code>static int seda_connect(int dev_id)
+{
+    UsbConfigDescriptor    *conf;
+    UsbInterfaceDescriptor *intf;
+    UsbEndpointDescriptor  *out_ep;
+
+    conf = sceUsbdScanStaticDescriptor(dev_id, dev, USB_DT_CONFIG);
+    intf = find_hid_interface(dev_id, conf);        /* find the HID interface */
+
+    /* Control pipe: every USB device has one, endpoint 0.
+       A NULL second argument means "endpoint 0". */
+    relay_dev.control_ep = sceUsbdOpenPipe(dev_id, NULL);
+
+    /* Interrupt OUT pipe: if present, this is the one we actually use */
+    out_ep = find_interrupt_out_endpoint(intf, conf);
+    if (out_ep)
+        relay_dev.interrupt_out_ep = sceUsbdOpenPipe(dev_id, out_ep);
+
+    /* Configure the device (SET_CONFIGURATION) */
+    sceUsbdSetConfiguration(relay_dev.control_ep,
+                            conf-&gt;bConfigurationValue,
+                            config_done, &amp;relay_dev);
+    return 0;
+}</code></pre>
+
+<h3>Step 3 — Send the packet</h3>
+<p>
+This is the heart of it. Prepare 8 bytes, write them to the pipe, wait for the result:
+</p>
+
+<span class="fileref">iop/seda_relay_irx.c — the essence</span>
+<pre><code>/* 1) Prepare the packet */
+memset(relay_dev.report, 0, sizeof(relay_dev.report));
+relay_dev.report[0] = 0x01;          /* fixed header */
+relay_dev.report[3] = (u8)command;   /* 1..4 = ON, 17..20 = OFF */
+
+/* 2) Send — this call returns IMMEDIATELY, the job is not finished yet */
+start_result = sceUsbdInterruptTransfer(
+    relay_dev.interrupt_out_ep,   /* which pipe          */
+    relay_dev.report,             /* data                */
+    8,                            /* how many bytes      */
+    transfer_done,                /* function called when done */
+    &amp;relay_dev);                  /* data passed to the callback */
+
+/* 3) Wait for completion */
+result = wait_transfer_result(start_result);</code></pre>
+
+<div class="note">
+<p><strong>The most important concept: USB transfers are asynchronous.</strong>
+<code>sceUsbdInterruptTransfer</code> does not mean "send", it means "queue the send" and
+returns at once. When the data has really gone out, <code>usbd.irx</code> calls the callback
+you supplied. That is why the code has a semaphore (<code>done_sema</code>):</p>
+</div>
+
+<span class="fileref">iop/seda_relay_irx.c — waiting mechanism</span>
+<pre><code>/* usbd.irx calls THIS when the transfer completes */
+static void transfer_done(int result, int bytes, void *arg)
+{
+    relay_dev.transfer_result = result;
+    relay_dev.transfer_bytes  = bytes;
+    SignalSema(done_sema);        /* raise the "done" flag */
+}
+
+/* We wait for the flag — at most 3 seconds */
+static int wait_transfer_result(int start_result)
+{
+    int i;
+    if (start_result != USB_RC_OK) return start_result;
+
+    for (i = 0; i &lt; 300; i++) {
+        if (PollSema(done_sema) == 0)      /* flag raised? */
+            return relay_dev.transfer_result;
+        DelayThread(10000);                /* sleep 10 ms, look again */
+    }
+
+    relay_dev.transfer_result = -1000;     /* timeout */
+    return relay_dev.transfer_result;
+}</code></pre>
+
+<h3>Interrupt transfer or control transfer?</h3>
+<div class="scroll">
+<table>
+<tr><th></th><th>Interrupt OUT</th><th>Control (SET_REPORT)</th></tr>
+<tr><td>Pipe used</td><td>The device's interrupt OUT endpoint</td><td>Endpoint 0 (present on every device)</td></tr>
+<tr><td>Function</td><td><code>sceUsbdInterruptTransfer</code></td><td><code>sceUsbdControlTransfer</code></td></tr>
+<tr><td>Requirement</td><td>Device must have an OUT endpoint</td><td>Always works</td></tr>
+<tr><td>Speed / efficiency</td><td>Better</td><td>Slower, extra overhead</td></tr>
+<tr><td>In this project</td><td><strong>Default path</strong></td><td>Fallback path</td></tr>
+</table>
+</div>
+<p>
+The code supports both, because some HID devices have no interrupt OUT endpoint at all — then
+the only option is a <code>SET_REPORT</code> request over the control pipe. The code detects
+this inside <code>seda_connect</code> and notes it.
+</p>
+
+<h2 id="rpc">5. How the EE talks to the IOP (SIF RPC)</h2>
+<p>
+Between the two processors there is a hardware bridge called the <strong>SIF</strong>. Over
+it you perform remote procedure calls (RPC): the EE fills a structure and sends it, the IOP
+processes it and sends the same structure back. Just like a network request, but between two
+chips.
+</p>
+
+<p>The definitions both sides need are collected in a single header:</p>
+
+<span class="fileref">seda_relay_rpc.h — included by both sides</span>
+<pre><code>#define SEDA_RELAY_RPC_ID 0x5344524c   /* "SDRL" — the service's address */
+
+#define SEDA_RELAY_RPC_SEND_COMMAND 1
+#define SEDA_RELAY_RPC_GET_STATUS   2
+
+typedef struct {
+    int result;            /* filled by IOP: operation result */
+    int command;           /* filled by EE:  1..20            */
+    int mode;              /* filled by EE:  send mode        */
+    int status;            /* filled by IOP: connected?       */
+    int control_result;    /* diagnostics                     */
+    int interrupt_result;  /* diagnostics                     */
+} SedaRelayRpcPacket;</code></pre>
+
+<p>The <strong>IOP side</strong> registers the service and waits for requests in an endless loop:</p>
+<pre><code>static void rpc_thread(void *arg)
+{
+    sceSifInitRpc(0);
+    sceSifSetRpcQueue(&amp;rpc_queue, GetThreadId());
+    sceSifRegisterRpc(&amp;rpc_server, SEDA_RELAY_RPC_ID,
+                      rpc_handler, &amp;rpc_buffer, NULL, NULL, &amp;rpc_queue);
+    sceSifRpcLoop(&amp;rpc_queue);      /* never returns */
+}</code></pre>
+
+<p>The <strong>EE side</strong> first finds the service (bind), then calls it:</p>
+<pre><code>/* Once: find the service */
+SifBindRpc(&amp;relay_rpc, SEDA_RELAY_RPC_ID, 0);
+
+/* For every command: call */
+relay_rpc_packet.command = command;
+relay_rpc_packet.mode    = usb_send_mode;
+
+SifCallRpc(&amp;relay_rpc,
+           SEDA_RELAY_RPC_SEND_COMMAND,
+           0,                                  /* 0 = wait until finished */
+           &amp;relay_rpc_packet, sizeof(...),     /* sent     */
+           &amp;relay_rpc_packet, sizeof(...),     /* returned */
+           NULL, NULL);</code></pre>
+
+<div class="warn">
+<p><strong>Why <code>__attribute__((aligned(64)))</code>?</strong>
+The SIF bridge works with DMA, and DMA requires the data to be aligned to a certain boundary
+in memory. Forget the alignment and the data gets corrupted or never arrives — and you get no
+error message. That is why every buffer carried over RPC is declared aligned. For the same
+reason <code>pad_buf</code> is 64-byte aligned.</p>
+</div>
+
+<p>
+Binding has one more subtlety: right after the IRX is loaded, the RPC service may not be
+ready yet. That is why <code>bind_relay_rpc()</code> tries 120 times with
+<code>nopdelay()</code> pauses in between.
+</p>
+
+<h2 id="protokol">6. The relay board protocol and the "12 modes" story</h2>
+<p>
+The board's manufacturer never published the protocol. The only reference was a C# program
+that works on Windows — <code>windows-test/SedaRelayHid.cs</code>:
+</p>
+
+<pre><code>byte[] outputBuffer = new byte[9];
+outputBuffer[0] = 0;          /* report ID */
+outputBuffer[1] = 1;
+outputBuffer[4] = command;
+writeRawReportToDevice(outputBuffer);</code></pre>
+
+<p>
+The problem: the Windows HID driver interprets the first byte of the buffer as the
+<em>report ID</em> and handles that byte itself on the way to the cable. So what really goes
+over the wire differs from the array the application sees. On the PS2, you write the raw
+packet yourself. Because of this uncertainty the code contains two packet layouts and a total
+of <strong>12 send modes</strong>:
+</p>
+
+<pre><code>/* Layout A — exact copy of the Windows buffer */
+static void fill_seda_report(int command, int command_index)
+{
+    memset(relay_dev.report, 0, sizeof(relay_dev.report));
+    relay_dev.report[0] = 0x00;
+    relay_dev.report[1] = 0x01;
+    relay_dev.report[command_index] = (u8)command;   /* usually index 4 */
+}
+
+/* Layout B — report ID stripped; THIS IS THE ONE THAT WORKS */
+static void fill_seda_payload_report(int command)
+{
+    memset(relay_dev.report, 0, sizeof(relay_dev.report));
+    relay_dev.report[0] = 0x01;
+    relay_dev.report[3] = (u8)command;
+}</code></pre>
+
+<p>
+Layout B is Layout A shifted one byte to the left — exactly the difference explained by
+Windows swallowing the report ID. The default mode is therefore
+<code>SEDA_RELAY_MODE_INT_PAYLOAD8</code> (mode 9): <strong>8-byte interrupt OUT, no report ID.</strong>
+</p>
+
+<p>
+The other 11 modes are diagnostic tools. You can switch modes from the settings screen and
+try which one sticks. <code>MODE_AUTO</code> (mode 0) brute-forces: it tries length × report
+type × recipient combinations in turn and uses the first one that works. That loop is at the
+end of <code>seda_send_command</code>.
+</p>
+
+<div class="note">
+<p><strong>General lesson:</strong> when working with an undocumented USB device you will not
+find the right packet on the first try. Building "a trial mechanism with adjustable
+parameters" into the code — and making it adjustable from the device's own screen — is far
+faster than recompiling and rewriting the disc every time. The mode system and the VID/PID
+editing screen in this project exist exactly for that reason.</p>
+</div>
+
+<h2 id="donanim">7. Wiring and electrical notes</h2>
+<p>
+The Seda Elektronik board uses two USB connections: one is the board's 5 V power supply, the
+other is the HID data link. Both go to the two USB ports of the PS2 Slim. The actual motor
+power is on the board's <em>relay contact</em> side; it does not come from the PS2's USB line.
+</p>
+
+<div class="flow">PS2 USB port 1 ---- 5 V power USB ----+
+PS2 USB port 2 ---- HID data USB -----+---- [ Seda 8-channel relay board ]
+                                             |
+3S LiPo (+) ---- NO1..NO4                    |  first four relays
+3S LiPo (-) ---- NC1..NC4                    |
+                                             v
+[COM1, COM2] ---- the two terminals of the paralleled left RS-540 motors
+[COM3, COM4] ---- the two terminals of the paralleled right RS-540 motors
+
+One relay ON in a group:  motor runs
+Both relays OFF:          both terminals (-), motor stops
+Both relays ON:           both terminals (+), motor stops</div>
+
+<p>
+A relay has three terminals and the logic is:
+</p>
+<div class="scroll">
+<table>
+<tr><th>Terminal</th><th>Meaning</th><th>Relay idle</th><th>Relay energised</th></tr>
+<tr><td><strong>COM</strong></td><td>Common</td><td colspan="2">Always in circuit</td></tr>
+<tr><td><strong>NO</strong></td><td>Normally open</td><td>Disconnected</td><td>Connected to COM</td></tr>
+<tr><td><strong>NC</strong></td><td>Normally closed</td><td>Connected to COM</td><td>Disconnected</td></tr>
+</table>
+</div>
+<p>
+In this vehicle's bidirectional wiring all <strong>NC</strong> terminals are on the LiPo (−)
+rail and all <strong>NO</strong> terminals on the LiPo (+) rail. COM1–COM2 go to the left
+motor group's terminals, COM3–COM4 to the right group's. Therefore both relays of one group
+being ON at the same time is <em>not</em> a supply short circuit; it puts (+) on both motor
+terminals and simply stops the motor.
+</p>
+
+<div class="warn">
+<p><strong>Current warning — skip this and you burn hardware.</strong></p>
+<ul>
+<li>The Seda board's separate 5 V power USB is on one PS2 USB port; the HID data cable is on
+the second port. Measure the board's rated current draw and the 5 V on the PS2 port under load.</li>
+<li>There must be a driver between the coil and the microcontroller: ULN2003/ULN2803 or a
+transistor. Preferably galvanic isolation with an optocoupler.</li>
+<li>A <strong>freewheel (snubber) diode</strong> across every coil — the reverse spike when
+the coil releases kills the driver transistor. Ready-made boards usually have it, but do not
+forget it if you build your own.</li>
+<li>Do not confuse the coil diode with motor suppression. Because the motor polarity is
+reversed, a unidirectional 1N5408 must not go across the motor terminals; a bidirectional TVS
+or a suitable RC snubber is needed.</li>
+<li>If you switch mains voltage (220 V), mind the clearance between the low-voltage and
+high-voltage areas of the board.</li>
+</ul>
+</div>
+
+<h2 id="dosya">8. File by file</h2>
+<div class="scroll">
+<table>
+<tr><th>File</th><th>Layer</th><th>What it does</th></tr>
+<tr><td><code>main.c</code></td><td>EE</td><td>The whole application: controller input, screen, menus, password, memory card, IRX loading, RPC calls, motion programming (~1100 lines)</td></tr>
+<tr><td><code>iop/seda_relay_irx.c</code></td><td>IOP</td><td>USB driver + RPC server. The place that actually sends the USB packet (~640 lines)</td></tr>
+<tr><td><code>seda_relay_rpc.h</code></td><td>shared</td><td>Protocol definitions included by both sides: RPC ID, command numbers, packet structure, mode constants</td></tr>
+<tr><td><code>iop/imports.lst</code></td><td>IOP</td><td>List of external functions the IRX uses. Leave one out and the linker says "undefined reference"</td></tr>
+<tr><td><code>usbd_irx.c</code><br><code>seda_relay_irx.c</code> (root)</td><td>generated</td><td><strong>Do not edit by hand.</strong> Huge C arrays produced by <code>bin2c</code> during the build (not committed). The root <code>seda_relay_irx.c</code> and the same-named file under <code>iop/</code> are different things — one is source, the other the embedded binary</td></tr>
+<tr><td><code>Makefile</code> / <code>iop/Makefile</code></td><td>build</td><td>EE and IOP build rules</td></tr>
+<tr><td><code>build.ps1</code></td><td>build</td><td>Sets the PS2SDK environment, runs <code>make</code>, produces the stripped <code>role.elf</code></td></tr>
+<tr><td><code>build-disc.ps1</code></td><td>build</td><td>Produces a bootable ISO with <code>xorriso</code></td></tr>
+<tr><td><code>run-pcsx2.ps1</code></td><td>dev</td><td>Launches the ELF in the PCSX2 emulator with a log file</td></tr>
+<tr><td><code>disc/SYSTEM.CNF</code></td><td>disc</td><td>Tells the PS2 which file on the disc to run: <code>cdrom0:\ROLE.ELF</code></td></tr>
+<tr><td><code>windows-test/</code></td><td>reference</td><td>C# program that drives the same board on Windows. The protocol's verification reference</td></tr>
+<tr><td><code>docs/</code></td><td>—</td><td>This guide plus the electronics, phase plan and battery/power documents (Turkish and English)</td></tr>
+<tr><td><code>images/</code></td><td>—</td><td>Vehicle photo, motor photo and generated artwork</td></tr>
+</table>
+</div>
+
+<h3>A few interesting spots in main.c</h3>
+<ul>
+<li><strong>Screen output:</strong> <code>log_printf()</code> prints the same text both with
+<code>printf</code> (emulator/ps2client console) and <code>scr_vprintf</code> (TV screen). Very handy for diagnostics.</li>
+<li><strong>Settings file:</strong> <code>mc0:SYS-CONF/ROLECFG.TXT</code> — plain text lines such as
+<code>mode=9</code> / <code>vid=178E</code>. Text was chosen over a binary format so it can be edited by hand.</li>
+<li><strong>Password screen:</strong> a 12-button sequence (XXX □□□ △△△ ○○○) to enter settings.
+The purpose is not security but preventing the user from breaking settings by accident.</li>
+<li><strong>Button edge detection:</strong> <code>current_buttons = 0xffff ^ buttons.btns;</code>
+— PS2 controller buttons arrive with <em>inverted logic</em> (pressed = 0). XOR corrects it.
+Then <code>pressed = current &amp; ~previous</code> finds "newly pressed" and
+<code>released = previous &amp; ~current</code> finds "newly released".</li>
+</ul>
+
+<h2 id="derleme">9. Building and running</h2>
+<p>Build order matters, because the EE side embeds the IOP side's output:</p>
+
+<div class="flow">iop/seda_relay_irx.c  --compile-->  iop/seda_relay.irx
+                                            |
+                                    convert to C array with bin2c
+                                            v
+                                    seda_relay_irx.c
+                                            |
+$(PS2SDK)/iop/irx/usbd.irx --bin2c-->  usbd_irx.c
+                                            |
+main.c + usbd_irx.c + seda_relay_irx.c -----+--> relay.elf
+                                                      |
+                                        role.elf (copy, --strip-debug)
+                                                      |
+                                      disc/ROLE.ELF + SYSTEM.CNF
+                                                      |
+                                              role-disc.iso</div>
+
+<p>In practice, a single command:</p>
+<pre><code>powershell -ExecutionPolicy Bypass -File build-disc.ps1</code></pre>
+
+<p>
+This script first calls <code>build.ps1</code> (sets the PS2SDK paths, runs
+<code>make clean</code> + <code>make</code>), then produces the ISO with MSYS2's
+<code>xorriso</code>. If you only need the ELF, running <code>build.ps1</code> alone is enough.
+</p>
+
+<p><code>relay.elf</code> keeps the developer debug information. <code>role.elf</code>, the
+file that is copied to the memory card, is automatically passed through
+<code>--strip-debug</code> while keeping the same entry address and the same LOAD segment.
+The distribution file is therefore much smaller; always use <code>role.elf</code> when
+transferring to the PS2.</p>
+
+<div class="warn">
+<p><strong>Emulator limit:</strong> with PCSX2 you can test the controller, screen, menu and
+memory card parts of the program — the logs show them loading. But <strong>real USB device
+pass-through is not reliable in the emulator.</strong> The relay protocol can only be verified
+on a real console. That is why the <code>result</code> / <code>status</code> /
+<code>ctrl</code> / <code>int</code> numbers on the screen matter: they are the only way to
+debug by looking at the TV.</p>
+</div>
+
+<h2 id="programlama">10. Motion programming mode</h2>
+<p>During normal driving the <strong>START</strong> button opens recording mode and, for
+safety, immediately switches every relay off. In this mode the motion buttons do not run the
+motors; they are recorded into a RAM array of up to 128 steps. <strong>Cross</strong>,
+<strong>Circle</strong>, <strong>Triangle</strong> and <strong>Square</strong> are driving
+moves; <strong>R1</strong> adds a one-second wait step with all relays off.</p>
+
+<p>A second <strong>START</strong> executes the recording. Each entry lasts one second. If the
+same move repeats consecutively the relay is not released in between; e.g. <code>X, X</code>
+drives forward for two uninterrupted seconds. At the end of every different move all relays
+are switched off and the next move is applied. When the program finishes, the recording is
+cleared and the relays stay off.</p>
+
+<p><strong>SELECT</strong> cancels the program while recording; during execution it is polled
+every 10 ms and acts as an emergency stop. In both cases all relays are switched off. The R1
+settings-screen behaviour in normal mode is preserved. START+SELECT still returns to the PS2
+main menu.</p>
+
+<p><strong>Safe shutdown:</strong> the software does not use the bulk <code>0xFC</code>
+command, which was never verified on the board. Every full shutdown sends the individually
+verified <code>17, 18, 19, 20</code> OFF commands. If an OFF command cannot be verified, the
+program does not energise the next direction. Program transitions, the SELECT emergency stop
+and controller disconnection all use the same safe shutdown path.</p>
+
+<h3>10.1 Relay dead time</h3>
+<p>When switching from one direction to the opposite, the relay contacts must not be closed at
+the same time. So in live driving, the moment a relay is switched off the software completes
+all switch-offs and then applies a configurable wait; only after that may the opposite relay
+be switched on. During program execution the wait is applied <strong>immediately before
+energising</strong> the next relay. The default is <strong>100 ms</strong>; it is changed on the
+settings screen's <code>Dead time</code> line with LEFT/RIGHT in 10 ms steps between 0 and
+1000 ms, and saved to the memory card under the <code>deadms=</code> key.</p>
+
+<p>The wait is applied only when it is actually owed:</p>
+<ul>
+<li>When an energised relay is released in live driving; this includes releasing one of
+<code>Cross</code> and <code>Triangle</code> after briefly holding both.</li>
+<li>On the first energisation after <code>relays_all_off()</code> — during program execution
+every step transition takes this path.</li>
+</ul>
+<p>Because in live driving the wait completes while the relay is opening, an independent
+press made later gets no extra delay. In program execution every distinct move step is 1 s on
++ 100 ms dead time; a six-step program takes about 6.5 s.</p>
+
+<h3>10.2 Saving the program to the memory card and recalling it with one button</h3>
+<p>In recording (programming) mode:</p>
+<ul>
+<li><strong>L1</strong> — writes the current sequence to the memory card.</li>
+<li><strong>L2</strong> — loads the saved sequence from the card back into RAM (you can append
+to it and save again).</li>
+</ul>
+<p>On the normal driving screen, <strong>L2</strong> reads the saved program from the card
+with one button and <em>runs it immediately</em>. If the card is empty or the file is corrupt
+it shows a warning and touches no relay.</p>
+
+<p>The file is plain text at <code>mc0:SYS-CONF/ROLEPRG.TXT</code>:</p>
+<pre><code>ROLEPRG v1
+steps=XXOTSW</code></pre>
+<p>Letters: <code>X</code> = Cross, <code>O</code> = Circle, <code>T</code> = Triangle,
+<code>S</code> = Square, <code>W</code> = wait. The reader also accepts lower case, commas and
+spaces; if it sees an unknown letter it rejects the file and leaves the current sequence
+untouched. At most 128 steps are read.</p>
+
+<h2 id="sozluk">11. Short glossary</h2>
+<div class="scroll">
+<table>
+<tr><th>Term</th><th>Meaning</th></tr>
+<tr><td><strong>EE</strong></td><td>Emotion Engine — the PS2's main CPU. Your application lives here</td></tr>
+<tr><td><strong>IOP</strong></td><td>I/O Processor — the helper CPU that manages peripherals. USB is attached here</td></tr>
+<tr><td><strong>SIF</strong></td><td>Sub-system InterFace — the DMA bridge between EE and IOP</td></tr>
+<tr><td><strong>RPC</strong></td><td>Remote Procedure Call — one processor calling a function on the other</td></tr>
+<tr><td><strong>IRX</strong></td><td>Loadable module (driver) format that runs on the IOP</td></tr>
+<tr><td><strong>ELF</strong></td><td>Executable format that runs on the EE</td></tr>
+<tr><td><strong>HID</strong></td><td>Human Interface Device — USB's keyboard/mouse/joystick class. The relay board imitates this class</td></tr>
+<tr><td><strong>VID / PID</strong></td><td>Vendor ID / Product ID — the USB device's identity number. 0x178E / 0x07D9 on this board</td></tr>
+<tr><td><strong>Descriptor</strong></td><td>Data structures in which the device "introduces itself": who I am, how many interfaces, which endpoints</td></tr>
+<tr><td><strong>Endpoint</strong></td><td>Data channel on a USB device. OUT = host to device, IN = device to host</td></tr>
+<tr><td><strong>Pipe</strong></td><td>A connection handle opened on an endpoint</td></tr>
+<tr><td><strong>Control transfer</strong></td><td>Setup/command transfer over endpoint 0, present on every device</td></tr>
+<tr><td><strong>Interrupt transfer</strong></td><td>Fast channel reserved for small, regular data. HID's normal path</td></tr>
+<tr><td><strong>Semaphore</strong></td><td>Counter used between two threads to signal "is it done?"</td></tr>
+<tr><td><strong>bin2c</strong></td><td>PS2SDK tool that converts a binary file to a C source array</td></tr>
+<tr><td><strong>Latch</strong></td><td>An output keeping its state until you change it</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="ozet">Summary: what to remember</h2>
+<ol>
+<li>On the PS2, <strong>the IOP, not the EE</strong>, accesses USB. That is the only reason the project is split in two.</li>
+<li>The two sides talk over <strong>SIF RPC</strong>; the structure carried is defined in <code>seda_relay_rpc.h</code> and must be aligned because of DMA.</li>
+<li>Sending data over USB is essentially three steps: <strong>probe</strong> (is this device mine) → <strong>openPipe</strong> (open a pipe) → <strong>transfer</strong> (write and wait for the callback).</li>
+<li>USB transfers are <strong>asynchronous</strong>; the function returning does not mean the job is done.</li>
+<li>The board expects an 8-byte interrupt OUT packet: <code>byte[0]=0x01</code>, <code>byte[3]=command</code>.</li>
+<li>Relay coils are <strong>not powered from USB</strong>; a separate supply + driver + freewheel diode are mandatory.</li>
+<li>A new HID device (e.g. a board you build with a PIC18F4550 or PIC16F1455) that implements the same packet format works on the PS2 side <strong>without changing a single line of code</strong> — just enter the VID/PID on the settings screen.</li>
+</ol>
+
+<footer>
+PS2 USB Relay Project — technical guide · English translation of <code>docs/tr/PROJE_REHBERI.html</code>
+</footer>
+
+</main>
+</body>
+</html>

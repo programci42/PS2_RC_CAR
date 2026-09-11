@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS2 Robot Vehicle — Phase Plan</title>
+<style>
+:root{
+  --bg:#ffffff; --ink:#1f2933; --muted:#5c6b7a; --line:#dde3ea;
+  --soft:#f5f7fa; --accent:#0f766e; --accent-soft:#e6f4f1;
+  --warn:#a15c07; --warn-soft:#fdf6e7; --code-bg:#1e2430; --code-ink:#e6edf3;
+  --ok:#15803d; --ok-soft:#e7f5ec; --risk:#b42318; --risk-soft:#fdeceb;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#12161c; --ink:#e6edf3; --muted:#9aa7b4; --line:#2a323d;
+    --soft:#1a2029; --accent:#5eead4; --accent-soft:#14302c;
+    --warn:#fbbf24; --warn-soft:#2e2410; --code-bg:#0c1017; --code-ink:#e6edf3;
+    --ok:#4ade80; --ok-soft:#122a1a; --risk:#f87171; --risk-soft:#2d1514;
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.65 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+main{max-width:860px;margin:0 auto;padding:36px 22px 72px}
+h1{font-size:29px;line-height:1.2;margin:0 0 6px}
+h2{font-size:21px;margin:46px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+h3{font-size:16px;margin:22px 0 6px}
+p{margin:11px 0}
+.lead{color:var(--muted);font-size:17px;margin:0 0 22px}
+code{
+  font-family:Consolas,"SF Mono",Menlo,monospace;font-size:.88em;
+  background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:1px 5px;
+}
+pre{
+  background:var(--code-bg);color:var(--code-ink);padding:15px;border-radius:8px;
+  overflow-x:auto;font-family:Consolas,monospace;font-size:13px;line-height:1.55;
+}
+pre code{background:none;border:none;padding:0;color:inherit}
+.phase{
+  border:1px solid var(--line);border-radius:10px;
+  padding:18px 20px;margin:18px 0;background:var(--soft);
+}
+.phase-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.num{
+  font-size:12px;font-weight:800;letter-spacing:.08em;
+  background:var(--accent);color:var(--bg);padding:3px 9px;border-radius:20px;
+}
+@media (prefers-color-scheme: dark){ .num{color:#0c1017} }
+.phase h3{margin:0;font-size:18px}
+.chip{
+  font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:4px;
+  text-transform:uppercase;letter-spacing:.04em;
+}
+.c-ok{background:var(--ok-soft);color:var(--ok)}
+.c-mid{background:var(--warn-soft);color:var(--warn)}
+.c-hard{background:var(--risk-soft);color:var(--risk)}
+.goal{
+  font-size:14.5px;color:var(--muted);border-left:3px solid var(--line);
+  padding-left:12px;margin:10px 0 14px;
+}
+.note,.warn{
+  border-left:4px solid var(--accent);background:var(--accent-soft);
+  padding:11px 15px;border-radius:0 6px 6px 0;margin:16px 0;font-size:15px;
+}
+.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p:first-child,.warn p:first-child{margin-top:0}
+.note p:last-child,.warn p:last-child{margin-bottom:0}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14.5px}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+.scroll{overflow-x:auto}
+.scroll table{min-width:480px}
+ul,ol{padding-left:22px;margin:10px 0}
+li{margin:5px 0}
+.flow{
+  font-family:Consolas,monospace;font-size:12.5px;line-height:1.7;
+  background:var(--code-bg);color:var(--code-ink);
+  padding:16px;border-radius:8px;overflow-x:auto;white-space:pre;
+}
+footer{margin-top:50px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<main>
+
+<h1>PS2 Robot Vehicle — Phase Plan</h1>
+<p class="lead">
+Goal: take a mains-powered PS2 Slim with FreeMCBoot off the wall socket with a battery and turn
+it into a 4-wheel robot vehicle, wirelessly controlled from a PC, with an EyeToy camera.
+The relay board and its software <strong>already work</strong> — this plan builds on top of them.
+</p>
+
+<div class="note">
+<p><strong>The plan's single rule:</strong> at the end of every phase there must be
+<em>something that works</em>. The phases are cut this way so you never spend months on a pile
+where nothing runs. Even if Phase 3 gets stuck, you are left with a drivable vehicle.</p>
+</div>
+
+<h2>Overview</h2>
+<div class="scroll">
+<table>
+<tr><th>Phase</th><th>What you gain</th><th>New code</th><th>Difficulty</th></tr>
+<tr><td>1 · Make it drive</td><td>Battery-powered vehicle driven with the controller</td><td>None</td><td>Easy</td></tr>
+<tr><td>2 · Wireless control</td><td>Vehicle driven from the PC</td><td>Medium</td><td>Medium</td></tr>
+<tr><td>3 · Camera research</td><td>A clear decision</td><td>Little (diagnostic tool)</td><td>Unknown</td></tr>
+<tr><td>4 · Single frame</td><td>First photo on the PC</td><td>A lot</td><td>Hard</td></tr>
+<tr><td>5 · MJPEG stream</td><td>Live video</td><td>Little (if 4 is done)</td><td>Medium</td></tr>
+</table>
+</div>
+
+<h2>Phases</h2>
+
+<div class="phase">
+<div class="phase-head">
+  <span class="num">PHASE 1</span>
+  <h3>Make it drive</h3>
+  <span class="chip c-ok">Easy · No code</span>
+</div>
+<p class="goal">When done: a 4-wheel car that runs on a battery and that you drive with a DualShock.</p>
+
+<p>This phase is entirely <strong>electrical and chassis work</strong>. The existing <code>role.elf</code> is used as is.</p>
+
+<h3>Power architecture</h3>
+<div class="flow">[3S LiPo]---[buck 8.5V]---&gt; PS2 Slim
+                                     |
+[Motor LiPo]---[motor driver]---&gt; motors
+                                     |
+              GNDs join here (GND ONLY)</div>
+
+<p><strong>The most critical decision:</strong> the PS2 and the motors are fed from separate battery packs.</p>
+
+<div class="warn">
+<p>Motors draw high current at start-up and when reversing, and the supply voltage dips for an
+instant. If they share the same pack, <strong>the PS2 resets at the start of every move</strong>.
+This single decision determines whether the project works at all.</p>
+<p><em>Note: the later Phase 1 electronics document (<code>PHASE1_ELECTRONICS.html</code>) refines
+this — with a wide-margin buck and a 12.8 V LiFePO4 pack, one battery with two fused branches is
+sufficient.</em></p>
+</div>
+
+<ul>
+<li>Look at the PS2 adapter label (typically 8.5 V on the Slim) — set the buck converter accordingly</li>
+<li>Choose the buck with plenty of margin: at least <strong>twice</strong> the current the PS2 draws</li>
+<li><strong>Low-voltage protection is mandatory</strong> — a LiPo cell below 3.0 V is permanently dead</li>
+<li>Rough estimate: a 3S 5000 mAh (~55 Wh) pack at 15–25 W consumption gives <strong>around 2 hours</strong></li>
+</ul>
+
+<h3>Motor wiring (with the existing relay board)</h3>
+<div class="scroll">
+<table>
+<tr><th>Relay</th><th>Role</th><th>Button</th></tr>
+<tr><td>1</td><td>Left motor forward</td><td>Cross</td></tr>
+<tr><td>2</td><td>Left motor reverse</td><td>Square</td></tr>
+<tr><td>3</td><td>Right motor forward</td><td>Triangle</td></tr>
+<tr><td>4</td><td>Right motor reverse</td><td>Circle</td></tr>
+</table>
+</div>
+<p>
+Tank-style turning: one side forward, the other reverse. The board has 8 channels, 4 are spare — keep them for lights/horn.
+</p>
+<p>
+<strong>Know the limit:</strong> a relay has no speed control, it is either full throttle or stop. Relays
+are mechanical; click them several times a second and the contacts wear. Speed control is not a Phase 1 topic.
+</p>
+<p><em>(The final button mapping and the bidirectional SPDT wiring actually built are documented in
+<code>PROJECT_GUIDE.html</code>, section 1 and 7.)</em></p>
+</div>
+
+<div class="phase">
+<div class="phase-head">
+  <span class="num">PHASE 2</span>
+  <h3>Wireless control</h3>
+  <span class="chip c-mid">Medium</span>
+</div>
+<p class="goal">When done: a vehicle you drive from the PC with keyboard/gamepad. No controller cable.</p>
+
+<h3>Hardware</h3>
+<p>
+The PS2 Slim <strong>already has an Ethernet port</strong> (on the back, built-in SMAP/DEV9 hardware).
+To make it wireless, a small <strong>WiFi bridge</strong> rides on the vehicle — a mini router in
+client/bridge mode. The PS2 thinks it is connected by cable.
+</p>
+<div class="flow">PS2 [Ethernet] ---cable--- [WiFi bridge] ))) WiFi ((( [PC]
+                              (on the vehicle,
+                               powered from 5V)</div>
+<p>
+This <strong>consumes no USB port</strong> — both USB ports stay free for the relay board and the EyeToy.
+Take the bridge's 5 V from the main battery through a small buck, not from the PS2's USB port.
+</p>
+
+<h3>Software</h3>
+<ul>
+<li><code>ps2ip.irx</code> + <code>ps2smap.irx</code> are loaded (embedded in the ELF like usbd.irx)</li>
+<li>A <strong>TCP listener</strong> is added next to the button-reading loop in <code>main.c</code></li>
+<li>The incoming byte is handed straight to the existing <code>relay_send_command()</code></li>
+<li><strong>The IOP driver, the RPC layer and the packet format are not touched at all</strong></li>
+<li>The controller keeps working in parallel — if the network drops you can intervene by hand</li>
+</ul>
+
+<div class="note">
+<p><strong>Bonus:</strong> once the network works, uLaunchELF's built-in FTP server gives you access
+to <code>mc0:</code>, <code>mass:</code> etc. from the PC. Not extra work, a gift.</p>
+</div>
+
+<div class="warn">
+<p><strong>Add a safety behaviour:</strong> if the network connection drops, the motors must stop.
+If no command arrives for a certain time (e.g. 1 s), call <code>relays_all_off()</code>.
+Otherwise the vehicle keeps executing the last command when WiFi cuts out.</p>
+</div>
+</div>
+
+<div class="phase">
+<div class="phase-head">
+  <span class="num">PHASE 3</span>
+  <h3>Camera research</h3>
+  <span class="chip c-hard">Unknown · Critical decision point</span>
+</div>
+<p class="goal">When done: you know whether Phase 4 will take weeks or months.</p>
+
+<p>There is <strong>one question to answer before writing any code</strong>:</p>
+<p style="font-size:17px"><strong>Is there a usable EyeToy driver on the PS2 homebrew side?</strong></p>
+
+<div class="scroll">
+<table>
+<tr><th>Answer</th><th>Consequence</th></tr>
+<tr><td>Yes, it works</td><td>Phase 4 shrinks to a few weeks</td></tr>
+<tr><td>Partially / outdated</td><td>Adaptation work, medium</td></tr>
+<tr><td>No</td><td>Driver from scratch — the project's biggest item</td></tr>
+</table>
+</div>
+
+<h3>EyeToy technical profile</h3>
+<div class="scroll">
+<table>
+<tr><td>VID / PID</td><td><code>0x054C</code> / <code>0x0154</code> or <code>0x0155</code> (two revisions)</td></tr>
+<tr><td>Chip</td><td>OmniVision <strong>OV519</strong></td></tr>
+<tr><td>Resolution</td><td>320×240 @ 30 fps · 640×480 @ 15 fps</td></tr>
+<tr><td>Transfer type</td><td><strong>Isochronous</strong> (<code>sceUsbdIsochronousTransfer</code>)</td></tr>
+<tr><td>Extra</td><td>Built-in microphone</td></tr>
+</table>
+</div>
+
+<div class="note">
+<p><strong>The detail that saves the project:</strong> USB 1.1 bandwidth is 12 Mbps, while raw 320×240
+video is ~4.6 MB/s — it does not fit. So the camera has to send the data <strong>compressed</strong>,
+and it does. The format is very close to JPEG, only the headers and quantisation tables are stripped.</p>
+<p>Result: <strong>the PS2 does not need to decode the image.</strong> Prepend the right header and
+pass the bytes straight through over the network; the PC does the decoding. You are spared writing
+a JPEG decoder for a 36 MHz IOP.</p>
+</div>
+
+<h3>This phase's deliverable: a descriptor dumper</h3>
+<p>
+Write a <strong>diagnostic tool</strong>, not a driver. Copy the <code>probe</code> skeleton from the
+relay driver, recognise the EyeToy and print every descriptor it sees to the screen:
+interfaces, endpoints, isochronous packet sizes, alternate settings.
+</p>
+<p>
+~150 lines, low risk, and it tells you <strong>what you are really dealing with</strong>.
+The "try 12 modes and find the one that sticks" approach worked on the Seda board — the same habit applies here.
+</p>
+</div>
+
+<div class="phase">
+<div class="phase-head">
+  <span class="num">PHASE 4</span>
+  <h3>Single frame</h3>
+  <span class="chip c-hard">Hard · The heart of the project</span>
+</div>
+<p class="goal">When done: a single photo from the EyeToy on the PC screen. Not a stream, one frame.</p>
+
+<p>Do not jump to streaming. Once a single frame works the hard part is over; the rest is repetition.</p>
+
+<ol>
+<li>Initialise the OV519 registers (resolution, format, frame rate)</li>
+<li>Receive packets from the isochronous endpoint</li>
+<li>Reassemble the packets into a full frame (find the frame boundaries)</li>
+<li>Add the JPEG header + quantisation table to make a valid file</li>
+<li>Move it to the EE over SIF RPC</li>
+<li>Send it to the PC over TCP</li>
+</ol>
+
+<div class="warn">
+<p><strong>Do not write the photo to the memory card.</strong> 8 MB capacity, ~100–150 KB/s write
+speed, limited flash life — and FreeMCBoot lives on that card. If it gets corrupted the console
+will not boot. Let the image flow straight over the network; intermediate storage is a needless step.</p>
+</div>
+</div>
+
+<div class="phase">
+<div class="phase-head">
+  <span class="num">PHASE 5</span>
+  <h3>MJPEG stream</h3>
+  <span class="chip c-mid">Medium · Easy if Phase 4 is done</span>
+</div>
+<p class="goal">When done: live video in the PC browser, without installing extra software.</p>
+
+<p>
+Send the frames back to back as <strong>MJPEG over HTTP</strong>. The method IP cameras have used
+for decades — the browser shows it without any plug-in:
+</p>
+<pre><code>&lt;img src="http://192.168.1.50:8080/stream"&gt;</code></pre>
+
+<div class="flow">EyeToy --iso--&gt; IOP --SIF--&gt; EE --TCP--&gt; WiFi bridge --&gt; browser
+     (compressed)      (header added)               (MJPEG)</div>
+
+<h3>Realistic ceiling</h3>
+<div class="scroll">
+<table>
+<tr><th></th><th>Expectation</th><th>Why</th></tr>
+<tr><td>Resolution</td><td>320×240</td><td>USB 1.1 bandwidth + IOP capacity</td></tr>
+<tr><td>Frame rate</td><td>10–15 fps</td><td>Network stack and SIF transfer</td></tr>
+<tr><td>Latency</td><td>200–500 ms</td><td>Bridge + ps2ip + browser buffering</td></tr>
+</table>
+</div>
+
+<div class="warn">
+<p><strong>You cannot drive a vehicle with half a second of latency</strong> — you will hit the wall.
+Do not design the vehicle as "drive by watching live video".
+Build a <strong>"move → stop → look → move again"</strong> model,
+or add a distance sensor and give the PS2 a self-stop reflex.</p>
+</div>
+</div>
+
+<h2>Next step: consolidating onto one USB port</h2>
+<p>
+Phases 1–2 run with the existing relay board. But once the EyeToy takes the second port
+<strong>you cannot plug in anything else</strong>, and a USB hub is not to be relied on
+(<code>usbd.irx</code>'s hub support is unreliable and it eats the power budget).
+</p>
+<p>
+The permanent solution: replace the relay board with <strong>your own HID microcontroller board</strong>
+(PIC18F4550 or PIC16F1455). Relays + motor PWM + distance sensor + battery voltage measurement all
+gather on one port, the second port stays for the EyeToy.
+</p>
+<p>
+If the board implements the existing 8-byte packet format (<code>byte[0]=0x01</code>,
+<code>byte[3]=command</code>), <strong>not a single line changes on the PS2 side</strong> — entering
+the VID/PID on the settings screen is enough. That is why, in the robot project, this board is
+promoted from "would be nice" to "required".
+</p>
+
+<footer>
+PS2 Robot Vehicle phase plan · English translation of <code>docs/tr/PROJE_FAZLARI.html</code><br>
+For the architecture and code walkthrough: <code>PROJECT_GUIDE.html</code>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PS2 Slim Batarya Güç Raporu</title>
+  <style>
+    :root {
+      --ink: #1f2933;
+      --muted: #52606d;
+      --line: #d9e2ec;
+      --soft: #f5f7fa;
+      --accent: #0f766e;
+      --warn: #a15c07;
+      --danger: #b42318;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #ffffff;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 22px 56px;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    h1 {
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin-top: 34px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--line);
+      font-size: 22px;
+    }
+
+    h3 {
+      margin-top: 22px;
+      font-size: 17px;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    a {
+      color: #075985;
+    }
+
+    .meta {
+      margin-top: 10px;
+      color: var(--muted);
+    }
+
+    .summary {
+      margin-top: 22px;
+      padding: 16px 18px;
+      border-left: 5px solid var(--accent);
+      background: #ecfdf5;
+    }
+
+    .warning {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-left: 5px solid var(--danger);
+      background: #fff5f5;
+    }
+
+    .note {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-left: 5px solid var(--warn);
+      background: #fffbeb;
+    }
+
+    table {
+      width: 100%;
+      margin: 14px 0 22px;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px 10px;
+      vertical-align: top;
+      word-wrap: break-word;
+    }
+
+    th {
+      background: var(--soft);
+      text-align: left;
+    }
+
+    code {
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #edf2f7;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      line-height: 1.45;
+    }
+
+    ul {
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    .badge {
+      display: inline-block;
+      margin: 0 4px 4px 0;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: #ffffff;
+      font-size: 13px;
+    }
+
+    @media print {
+      main {
+        max-width: none;
+        padding: 18mm;
+      }
+
+      a {
+        color: var(--ink);
+        text-decoration: none;
+      }
+
+      h2 {
+        break-after: avoid;
+      }
+
+      table, pre, .summary, .warning, .note {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>PS2 Slim Batarya ile Güvenli Çalıştırma ve Röle Yükleri Güç Planı</h1>
+    <p class="meta">
+      Hazırlanma tarihi: 21 Temmuz 2026 |
+      Hedef sistem: adaptörlü PS2 Slim, Seda Elektronik 8 röle kartı, 4 DC motor, fan ve ampul
+    </p>
+
+    <div class="summary">
+      <strong>Kısa sonuç:</strong>
+      En mantıklı ve uygun fiyatlı çözüm, <strong>12V 7Ah kuru akü</strong> veya daha iyi bütçede
+      <strong>12.8V LiFePO4 akü</strong> kullanıp PS2 Slim için ayrı bir buck regülatörle
+      <strong>8.50V DC</strong> üretmektir. Motor, fan ve ampul kesinlikle PS2 USB portundan veya
+      PS2'nin 8.5V besleme hattından beslenmemeli; ayrı sigortalı 12V yük hattından röle kontakları
+      üzerinden çalıştırılmalıdır.
+    </div>
+
+    <div class="note">
+      <strong>PS2'nin kendi adaptörü ne olacak?</strong>
+      Batarya ile kullanımda PS2'nin orijinal 220V adaptörünü kullanmıyoruz. Onun yaptığı işi batarya
+      tarafındaki DC-DC regülatör yapıyor: bataryadan gelen 12V civarı gerilim regülatörde
+      <code>8.50V DC</code> seviyesine düşürülüp PS2 Slim'in normal adaptör girişine veriliyor.
+      Evde prizden kullanmak istersen orijinal adaptörü yine kullanabilirsin; batarya devresiyle aynı
+      anda paralel bağlama.
+    </div>
+
+    <div class="note">
+      <strong>Güncel kurulu düzen (Eylül 2026):</strong>
+      Tek 3S 11.1V 40C LiPo iki dala ayrılır. Bir dal XL4015 ile 8.50V'a düşürülüp
+      PS2 Slim DC girişine gider; diğer dal dört RS-540 motora röle kontakları üzerinden
+      doğrudan gider. Seda Elektronik 8'li röle kartının ayrı 5V güç USB'si ve HID veri
+      USB'si PS2 Slim'in iki USB portunu kullanır. Soldaki iki motor paralel, sağdaki iki
+      motor paraleldir; yön için ilk dört SPDT röle kullanılır.
+    </div>
+
+    <h2>Önerilen Güç Mimarisi</h2>
+    <p>Bu projede iki ayrı güç hattı kullanmak en temiz çözümdür:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Hat</th>
+          <th>Ne Besler?</th>
+          <th>Neden Ayrı Olmalı?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>PS2 hattı</td>
+          <td>PS2 Slim ve USB röle kartının veri tarafı</td>
+          <td>PS2 sabit ve temiz <code>8.5V DC</code> ister. Motor paraziti veya ani akım düşmesi PS2'yi kilitleyebilir.</td>
+        </tr>
+        <tr>
+          <td>Yük hattı</td>
+          <td>4 DC motor, fan, ampul</td>
+          <td>Motorlar kalkışta yüksek akım çeker. Bu yükler sigorta ve röle kontakları üzerinden ayrı beslenmelidir.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <pre>12V akü / 12.8V LiFePO4
+   |
+   +-- 7.5A sigorta -- ana şalter -- XL4016 buck -- 8.50V -- PS2 Slim DC girişi
+   |
+   +-- ayrı sigorta kutusu -- röle kontakları -- motorlar / fan / ampul</pre>
+
+    <div class="warning">
+      <strong>Önemli:</strong>
+      PS2 Slim'in USB portları röle kartına veri göndermek ve küçük elektronik devreleri beslemek içindir.
+      4 motor, fan veya ampulü PS2 USB portundan beslemek doğru değildir.
+    </div>
+
+    <h2>Teknik Dayanak</h2>
+    <p>
+      Adaptörlü PS2 Slim modellerinde tipik adaptör değeri <strong>8.5V DC, yaklaşık 5.65A</strong> civarındadır.
+      Bu, PS2 tarafında yaklaşık <strong>48W</strong> kapasiteye göre düşünmek gerektiği anlamına gelir.
+    </p>
+    <p>
+      Portable PS2 projelerinde yaygın yaklaşım, bataryadan gelen 11.1V / 12V civarı gerilimi kaliteli bir DC-DC
+      regülatörle PS2'nin istediği <strong>8.5V</strong> seviyesine düşürmektir. PowerStream'in PS2 için ürettiği
+      araç adaptörü de 10-15V girişten 8.5V çıkış verir ve bu mimarinin doğru yönde olduğunu gösterir.
+    </p>
+
+    <h2>Güç ve Çalışma Süresi Hesabı</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Kalem</th>
+          <th>Hesap / Not</th>
+          <th>Pratik Sonuç</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>PS2 Slim</td>
+          <td>8.5V x 5.65A adaptör kapasitesi yaklaşık 48W. Gerçek tüketim oyuna, diske ve USB yüküne göre değişebilir.</td>
+          <td>Regülatör en az 6A, tercihen 8A üstü seçilmeli.</td>
+        </tr>
+        <tr>
+          <td>12V 7Ah kuru akü</td>
+          <td>Nominal enerji yaklaşık 84Wh. Kurşun aküde tamamı pratikte kullanılamaz.</td>
+          <td>Sadece PS2 için yaklaşık 1-1.5 saat aralığı gerçekçi olur.</td>
+        </tr>
+        <tr>
+          <td>12.8V 12Ah LiFePO4</td>
+          <td>Nominal enerji yaklaşık 154Wh. Kurşun aküye göre daha verimli ve daha hafiftir.</td>
+          <td>Sadece PS2 için yaklaşık 2.5-3 saat aralığı beklenebilir.</td>
+        </tr>
+        <tr>
+          <td>Motor, fan, ampul</td>
+          <td>Toplam süreyi asıl bu yükler belirler. Motorların kalkış akımı normal çalışma akımından çok yüksek olabilir.</td>
+          <td>Motorların amper değerleri ölçülmeden net süre hesabı yapılamaz.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Parça ve Fiyat Listesi</h2>
+    <p class="meta">Fiyatlar çevrimiçi görülen yaklaşık aralıklardır; satın almadan önce güncel satıcı fiyatını kontrol et.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Parça</th>
+          <th>Önerilen Özellik</th>
+          <th>Yaklaşık Fiyat</th>
+          <th>Not</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>12V 7Ah kuru akü</td>
+          <td>12V, 7Ah, bakımsız kuru akü</td>
+          <td>340-650 TL</td>
+          <td>En ucuz pratik çözüm. Ağırdır, kapasitesi LiFePO4 kadar verimli kullanılamaz.</td>
+        </tr>
+        <tr>
+          <td>12.8V LiFePO4 akü</td>
+          <td>12.8V, 12Ah, dahili BMS'li</td>
+          <td>2.600-3.700 TL</td>
+          <td>Daha pahalı ama daha güvenli, hafif ve uzun ömürlü seçenek.</td>
+        </tr>
+        <tr>
+          <td>XL4016 buck regülatör</td>
+          <td>4-40V giriş, 1.25-36V çıkış, 8A sınıfı</td>
+          <td>170-450 TL</td>
+          <td>PS2 için çıkış multimetre ile <code>8.50V</code> ayarlanmalı. Soğutma önemli.</td>
+        </tr>
+        <tr>
+          <td>Bıçak sigorta yuvası / kutusu</td>
+          <td>Oto tipi sigorta yuvası veya çoklu sigorta kutusu</td>
+          <td>35-350 TL</td>
+          <td>PS2 hattı ve yük hattı ayrı sigortalanmalı.</td>
+        </tr>
+        <tr>
+          <td>12V akü şarj cihazı</td>
+          <td>Kullanılan akü tipine uygun şarj cihazı</td>
+          <td>700-1.200 TL</td>
+          <td>Kurşun akü ve LiFePO4 için şarj cihazı aynı olmak zorunda değildir.</td>
+        </tr>
+        <tr>
+          <td>DC voltmetre / ampermetre</td>
+          <td>0-100V, 0-10A panel tip</td>
+          <td>85-250 TL</td>
+          <td>Test ve arıza takibi için faydalı.</td>
+        </tr>
+        <tr>
+          <td>USB-C PD trigger + powerbank</td>
+          <td>12V/15V/20V destekli trigger ve güçlü powerbank</td>
+          <td>2.300-4.500 TL+</td>
+          <td>PS2 tek başına için denenebilir; motorlu sistemde ana çözüm olarak önermiyorum.</td>
+        </tr>
+        <tr>
+          <td>Hazır 3S LiPo pil paketi</td>
+          <td>11.1V 3S, tercihen 5000mAh ve üzeri, XT60/T-Plug çıkışlı</td>
+          <td>1.900-7.500 TL</td>
+          <td>Yüksek akım verebilir ama balans şarj, düşük voltaj alarmı/kesici ve yangın güvenliği ister.</td>
+        </tr>
+        <tr>
+          <td>Hazır Li-ion batarya paketi</td>
+          <td>3S veya 4S, dahili BMS'li, yeterli akım kapasiteli</td>
+          <td>Modele göre değişir</td>
+          <td>BMS'li paketler çıplak hücre toplamaya göre daha güvenlidir; yine de çıkış akımı PS2 + yük için yeterli olmalı.</td>
+        </tr>
+        <tr>
+          <td>Kablo, soket, şalter, klemens</td>
+          <td>Akıma uygun kesitte kablo ve sağlam bağlantı elemanları</td>
+          <td>200-600 TL</td>
+          <td>Motor hattında ince kablo kullanma. Bağlantıları gevşek bırakma.</td>
+        </tr>
+        <tr>
+          <td>PS2 EyeToy kamera</td>
+          <td>SCEH-0004 / SLEH-00030 gibi USB EyeToy kamera</td>
+          <td>270-300 TL kamera tek başına; oyunlu paketler 1.300 TL'ye kadar çıkabiliyor</td>
+          <td>İkinci el alırken kablo, USB soket ve PS2'de algılanma durumu özellikle sorulmalı.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Hazır LiPo / Li-ion Paket Kullanılır mı?</h2>
+    <p>
+      Hazır LiPo paketleri liste dışı bırakmamın sebebi tamamen kullanılamaz olmaları değil; bu proje için
+      kurşun akü veya LiFePO4 kadar tak-çalıştır ve affedici olmamalarıdır. RC tipi 3S LiPo paketler yüksek
+      akım verebilir, bu motorlar için avantajdır. Fakat yanlış şarj, fazla deşarj, kısa devre veya mekanik
+      hasarda riskleri daha ciddidir.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Seçenek</th>
+          <th>Avantaj</th>
+          <th>Dikkat Edilecek Nokta</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>3S LiPo 11.1V</td>
+          <td>Hafif, yüksek akım verebilir, motorlu sistemlerde güçlüdür.</td>
+          <td>Balans şarj cihazı, düşük voltaj alarmı/kesici ve güvenli saklama çantası gerekir.</td>
+        </tr>
+        <tr>
+          <td>BMS'li Li-ion paket</td>
+          <td>LiPo'ya göre günlük kullanımda daha kontrollüdür; BMS koruma sağlayabilir.</td>
+          <td>Paketin sürekli çıkış akımı PS2 ve motor yüklerine yetmeli. Ucuz paketlerde BMS akımı düşük olabilir.</td>
+        </tr>
+        <tr>
+          <td>LiFePO4 paket</td>
+          <td>Daha güvenli kimya, uzun çevrim ömrü, 12V sistemlere uyumlu.</td>
+          <td>İlk maliyet daha yüksek, uygun LiFePO4 şarj cihazı gerekir.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Benim sıralamam: <strong>LiFePO4 en temiz çözüm</strong>, bütçe düşükse <strong>12V 7Ah kuru akü</strong>,
+      ağırlık çok kritikse ve pil güvenliğiyle uğraşacaksan <strong>3S LiPo</strong>. LiPo kullanırsan PS2 hattı
+      yine doğrudan pile bağlanmayacak; mutlaka buck regülatörle <code>8.50V</code> üretilecek.
+    </p>
+
+    <h2>Önerilen Bütçe Sepetleri</h2>
+    <h3>Ucuz ve çalışır çözüm</h3>
+    <p>
+      <span class="badge">12V 7Ah kuru akü</span>
+      <span class="badge">XL4016 buck</span>
+      <span class="badge">sigorta yuvaları</span>
+      <span class="badge">12V akü şarj cihazı</span>
+      <span class="badge">kablo / soket / şalter</span>
+    </p>
+    <p>Tahmini toplam: <strong>1.300-2.300 TL</strong>. Masaüstü deneme ve kısa süreli kullanım için en mantıklı başlangıç budur.</p>
+
+    <h3>Daha kaliteli çözüm</h3>
+    <p>
+      <span class="badge">12.8V LiFePO4 akü</span>
+      <span class="badge">kaliteli buck regülatör</span>
+      <span class="badge">sigorta kutusu</span>
+      <span class="badge">LiFePO4 uyumlu şarj cihazı</span>
+      <span class="badge">volt / amper göstergesi</span>
+    </p>
+    <p>Tahmini toplam: <strong>3.600-5.500 TL</strong>. Daha hafif, daha uzun ömürlü ve daha stabil sistem olur.</p>
+
+    <h2>Bağlantı Planı</h2>
+    <ol>
+      <li>Akü çıkışına ana sigorta koy.</li>
+      <li>Sigortadan sonra ana açma/kapama şalteri koy.</li>
+      <li>PS2 hattını ayrı bir sigortadan geçirip XL4016 buck regülatöre bağla.</li>
+      <li>XL4016 çıkışını PS2'ye bağlamadan önce multimetre ile <code>8.50V</code> olarak ayarla.</li>
+      <li>Regülatör çıkış polaritesini kontrol et: artı ve eksi ters bağlanmamalı.</li>
+      <li>Motor, fan ve ampul için ayrı 12V sigorta hattı kur.</li>
+      <li>Seda röle kartının röle kontaklarını motor/fan/ampul besleme hattını anahtarlamak için kullan.</li>
+      <li>Motor yönü ters çevrildiği için uçlara tek yönlü flyback diyot bağlama. Parazit
+      azaltmak için çift yönlü TVS veya çift yön çalışmaya uygun RC snubber kullan.</li>
+      <li>İlk testte PS2 yerine yük direnci veya ampul ile regülatör çıkışını dene.</li>
+      <li>Her şey doğruysa PS2'yi bağla ve önce motorsuz test yap.</li>
+    </ol>
+
+    <h2>Powerbank Kullanılır mı?</h2>
+    <p>
+      Standart 5V powerbank doğrudan uygun değildir. PS2 yaklaşık 8.5V ister ve yüksek akım çekebilir.
+      USB-C PD destekli güçlü bir powerbank, PD trigger ile 12V veya 15V çıkış verip buck regülatöre bağlanırsa
+      PS2 tek başına için denenebilir. Fakat motor, fan ve ampul gibi yükler de aynı sistemde varsa powerbank
+      çözümü daha pahalı ve daha sorunlu hale gelir.
+    </p>
+    <div class="note">
+      <strong>Benim önerim:</strong>
+      Bu proje için powerbank yerine 12V kuru akü veya LiFePO4 akü kullan. Powerbank ancak taşınabilirlik çok önemliyse
+      ve motor yükleri ayrı bataryadan beslenecekse mantıklı olur.
+    </div>
+
+    <h2>Güvenlik Notları</h2>
+    <ul>
+      <li>PS2 girişine kesinlikle doğrudan 12V verme; PS2 Slim için hedef çıkış <strong>8.50V DC</strong> olmalı.</li>
+      <li>Regülatör çıkışı PS2'ye bağlanmadan önce multimetre ile ölçülmeli.</li>
+      <li>PS2 hattı ile motor hattı ayrı sigortalanmalı.</li>
+      <li>Motorların kalkış akımı yüksek olacağı için röle kontak akım değerleri kontrol edilmeli.</li>
+      <li>DC motorlar röle kontaklarında kıvılcım ve parazit oluşturabilir; diyot/TVS/snubber kullanmak gerekir.</li>
+      <li>Akü kısa devresi ciddi ısınma ve yangın riski taşır; açıkta kablo bırakma.</li>
+      <li>Li-ion paket yapılacaksa mutlaka BMS kullanılmalı. Rastgele 18650 pilleri doğrudan bağlama.</li>
+      <li>İlk denemelerde motorları bağlamadan sadece PS2 ve röle kartı ile test yap.</li>
+    </ul>
+
+    <h2>Kaynaklar</h2>
+    <ul>
+      <li><a href="https://www.powerstream.com/dc-ps2.htm">PowerStream PS2 12V to 8.5V araç adaptörü</a></li>
+      <li><a href="https://www.robotistan.com/xh4016-voltaj-regulator-modulu">Robotistan XL4016 voltaj regülatör modülü</a></li>
+      <li><a href="https://www.robotistan.com/3s-lipo-pil-111v-lipo-batarya">Robotistan 3S 11.1V LiPo pil fiyat örnekleri</a></li>
+      <li><a href="https://www.thkmodelucak.com/urun/thk-2600-mah-11-1v-3s-35c-lipo-batarya-2100">THK 2600mAh 11.1V 3S LiPo batarya örneği</a></li>
+      <li><a href="https://www.hepsiburada.com/12v-7ah-aku-x-s59053">Hepsiburada 12V 7Ah akü fiyat örnekleri</a></li>
+      <li><a href="https://www.akakce.com/arama/?q=lifepo4+ak%C3%BC">Akakçe LiFePO4 akü fiyat örnekleri</a></li>
+      <li><a href="https://www.adamoto.com.tr/kategori/bicak-sigorta">Adamoto bıçak sigorta yuvası ve sigorta kutuları</a></li>
+      <li><a href="https://www.robotronik.com.tr/dijital-voltmetre-ampermetre-dc-100v-10a-a0334">Robotronik DC voltmetre/ampermetre modülü</a></li>
+      <li><a href="https://www.sahibinden.com/ilan/ikinci-el-ve-sifir-alisveris-oyunculara-ozel-oyuncu-ekipmanlari-playstation-2-eye-toy-usb-kamera-sceh-0004-1288021152/detay">Sahibinden PS2 EyeToy kamera ilan örneği</a></li>
+      <li><a href="https://www.nerdenevarsa.com/urun/nintendo-wii-udraw-game-tablet-wii-oyun-tableti/">NeredeNeVarsa PS2 EyeToy kamera fiyat örneği</a></li>
+      <li><a href="https://bitbuilt.net/forums/threads/battery-powering-a-ps2.3168/">BitBuilt portable PS2 batarya tartışması</a></li>
+      <li><a href="https://bitbuilt.net/forums/tags/ps2-portable/">BitBuilt PS2 portable proje başlıkları</a></li>
+    </ul>
+  </main>
+</body>
+</html>

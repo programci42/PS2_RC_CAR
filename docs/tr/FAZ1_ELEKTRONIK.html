@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faz 1 — Güvenli Elektronik Tasarım</title>
+<style>
+:root{
+  --bg:#ffffff; --ink:#1f2933; --muted:#5c6b7a; --line:#dde3ea;
+  --soft:#f5f7fa; --accent:#0f766e; --accent-soft:#e6f4f1;
+  --warn:#a15c07; --warn-soft:#fdf6e7; --code-bg:#1e2430; --code-ink:#e6edf3;
+  --danger:#b42318; --danger-soft:#fdeceb; --ok:#15803d; --ok-soft:#e7f5ec;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#12161c; --ink:#e6edf3; --muted:#9aa7b4; --line:#2a323d;
+    --soft:#1a2029; --accent:#5eead4; --accent-soft:#14302c;
+    --warn:#fbbf24; --warn-soft:#2e2410; --code-bg:#0c1017; --code-ink:#e6edf3;
+    --danger:#f87171; --danger-soft:#2d1514; --ok:#4ade80; --ok-soft:#122a1a;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.65 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:900px;margin:0 auto;padding:36px 22px 80px}
+h1{font-size:29px;line-height:1.2;margin:0 0 6px}
+h2{font-size:22px;margin:48px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+h3{font-size:17px;margin:26px 0 8px}
+h4{font-size:15px;margin:18px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+p{margin:11px 0}
+.lead{color:var(--muted);font-size:17px;margin:0 0 22px}
+code{font-family:Consolas,"SF Mono",Menlo,monospace;font-size:.88em;
+  background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+pre{background:var(--code-bg);color:var(--code-ink);padding:16px;border-radius:8px;
+  overflow-x:auto;font-family:Consolas,monospace;font-size:13px;line-height:1.6}
+pre code{background:none;border:none;padding:0;color:inherit}
+.flow{font-family:Consolas,monospace;font-size:12.5px;line-height:1.75;
+  background:var(--code-bg);color:var(--code-ink);padding:18px;border-radius:8px;
+  overflow-x:auto;white-space:pre}
+.note,.warn,.danger,.ok{border-left:4px solid var(--accent);background:var(--accent-soft);
+  padding:12px 16px;border-radius:0 6px 6px 0;margin:16px 0}
+.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.danger{border-left-color:var(--danger);background:var(--danger-soft)}
+.ok{border-left-color:var(--ok);background:var(--ok-soft)}
+.note p:first-child,.warn p:first-child,.danger p:first-child,.ok p:first-child{margin-top:0}
+.note p:last-child,.warn p:last-child,.danger p:last-child,.ok p:last-child{margin-bottom:0}
+.danger strong:first-child{color:var(--danger)}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14.5px}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+.scroll{overflow-x:auto}
+.scroll table{min-width:520px}
+ul,ol{padding-left:22px;margin:10px 0}
+li{margin:6px 0}
+.toc{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:16px 20px;margin:24px 0}
+.toc ol{margin:6px 0 0}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.step{border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:12px 0;background:var(--soft)}
+.step-n{display:inline-block;font-weight:800;font-size:12px;letter-spacing:.07em;
+  background:var(--accent);color:var(--bg);padding:3px 9px;border-radius:20px;margin-bottom:6px}
+@media (prefers-color-scheme: dark){.step-n{color:#0c1017}}
+.chk{list-style:none;padding-left:0}
+.chk li{padding-left:26px;position:relative}
+.chk li::before{content:"☐";position:absolute;left:4px;font-size:17px;color:var(--muted)}
+footer{margin-top:52px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<main>
+
+<h1>Faz 1 — Güvenli Elektronik Tasarım</h1>
+<p class="lead">
+PS2 Slim'i bataryayla çalıştırıp 4 motorlu araca dönüştürmenin elektrik tarafı:
+güç mimarisi, sigortalama, kablolama ve <strong>hangi sırayla test edileceği</strong>.
+Bu belge tezgahta yanında açık dursun diye yazıldı.
+</p>
+
+<div class="danger">
+<p><strong>Bu fazda yanlış yapılırsa ne olur:</strong> PS2 kalıcı olarak ölür (yanlış voltaj),
+kablo yangını çıkar (sigortasız kısa devre) veya batarya alev alır (LiPo delinmesi/aşırı deşarj).
+Aşağıdaki test sırası tavsiye değil, <strong>uygulanması gereken sıradır</strong>.</p>
+</div>
+
+<div class="toc">
+<strong>İçindekiler</strong>
+<ol>
+  <li><a href="#mimari">Güç mimarisi</a></li>
+  <li><a href="#sigorta">Sigorta — cam mı, bıçak mı, nasıl bağlanır</a></li>
+  <li><a href="#hesap">Akım hesabı ve sigorta değerleri</a></li>
+  <li><a href="#kablo">Kablo seçimi</a></li>
+  <li><a href="#buck">Buck regülatör ayarı</a></li>
+  <li><a href="#batarya">Batarya seçimi ve koruması</a></li>
+  <li><a href="#motor">Motor bağlantısı ve röle kontakları</a></li>
+  <li><a href="#montaj">Montaj sırası ve test protokolü</a></li>
+  <li><a href="#liste">Alışveriş listesi</a></li>
+</ol>
+</div>
+
+<h2 id="mimari">1. Güç mimarisi</h2>
+
+<div class="flow">        [ 12.8V LiFePO4 akü ]
+                 |
+                 | (+) ucundan çıkan ilk şey:
+                 |
+          [ ANA SİGORTA 20A ]   &lt;-- aküye 10-15 cm mesafede
+                 |
+          [ ANA ŞALTER ]        &lt;-- her şeyi kesen tek anahtar
+                 |
+         +-------+-------------------------+
+         |                                 |
+   [SİGORTA 5A]                      [SİGORTA 15A]
+         |                                 |
+   [XL4016 buck]                    [röle kontakları]
+    çıkış 8.50V                            |
+         |                            [4 DC motor]
+   [PS2 Slim DC girişi]
+         |
+   [USB] --&gt; röle kartı (sadece veri + kart lojiği)
+         |
+   [5V buck] --&gt; GL.iNet Mango (WiFi köprü, Faz 2)
+
+  GND: tek akü olduğu için ortak. Yıldız topolojisi kullan —
+       tüm GND dönüşleri akünün (-) ucunda tek noktada buluşsun.</div>
+
+<h3>Neden iki ayrı dal?</h3>
+<div class="scroll">
+<table>
+<tr><th>Dal</th><th>Ne besler</th><th>Neden ayrı</th></tr>
+<tr><td><strong>PS2 dalı</strong></td><td>PS2 Slim + röle kartı lojiği + WiFi köprü</td>
+<td>PS2 temiz ve sabit 8.5V ister. Motor paraziti veya ani gerilim düşüşü konsolu kilitler.</td></tr>
+<tr><td><strong>Yük dalı</strong></td><td>4 DC motor (ileride fan, ampul)</td>
+<td>Motorlar kalkışta normal akımın 5-8 katını çeker. Bu dalgalanma PS2 dalına karışmamalı.</td></tr>
+</table>
+</div>
+
+<div class="note">
+<p><strong>Tek akü mi, iki akü mi?</strong> Tek akü + iki sigortalı dal <em>yeterlidir</em>.
+Asıl kritik parametre ayrı akü değil, <strong>buck regülatörün giriş marjı</strong>.</p>
+<p>12.8V LiFePO4 → 8.5V dönüşümünde elinde ~4V marj var. Motor kalkışında akü gerilimi
+0.3-0.5V düşse bile buck bunu yutar ve çıkış 8.50V'ta sabit kalır. Marj bu kadar genişken
+ikinci aküye para ve ağırlık harcamana gerek yok.</p>
+<p>İki akı <em>şart</em> olduğu durum şudur: marjın dar olması. Örneğin 3S LiPo (boşken 9.9V)
++ ucuz bir LM2596 kullanırsan, regülatörün ~2V düşüm ihtiyacı marjı bitirir ve motor
+kalktığı anda PS2 resetlenir. <strong>Sorun akü sayısı değil, marj.</strong></p>
+</div>
+
+<h2 id="sigorta">2. Sigorta — cam mı, bıçak mı, nasıl bağlanır</h2>
+
+<h3>Sigorta ne işe yarar (yaygın yanlış anlama)</h3>
+<p>
+Sigorta <strong>cihazı değil kabloyu korur.</strong> Amacı, bir kısa devre anında kablonun
+kızarıp yangın çıkarmasını önlemektir. PS2'yi koruyan şey sigorta değil, buck regülatörün
+doğru ayarlanmış olmasıdır.
+</p>
+
+<h3>Cam sigorta kullanılabilir mi?</h3>
+<p>
+Kullanılabilir, ama <strong>motor dalında önermiyorum</strong>. Sebebi teknik ve önemli:
+</p>
+
+<h4>Kesme kapasitesi meselesi</h4>
+<p>
+Bir sigorta attığında içindeki tel buharlaşır. Ama akım çok yüksekse, buharlaşan metalin
+iyonize gazı içinden <strong>ark atlamaya devam eder</strong>. Akü arkı beslemeye devam ettiği
+sürece sigorta atmış sayılmaz — cam patlar, ark sürer, koruma gerçekleşmez.
+</p>
+
+<div class="scroll">
+<table>
+<tr><th>Sigorta tipi</th><th>Kesme kapasitesi</th><th>Ark nasıl söner</th><th>Bu projede</th></tr>
+<tr><td>5×20 <strong>cam</strong></td><td>~35 A</td><td>Sönmesi için bir şey yok — cam boş</td><td>Sadece düşük akımlı dalda</td></tr>
+<tr><td>5×20 <strong>seramik</strong> (kum dolgulu)</td><td>~1500 A</td><td>Kum arkı boğar</td><td>✅ İyi</td></tr>
+<tr><td><strong>Bıçak sigorta</strong> (oto tipi ATO/ATC)</td><td>~1000 A, 32V DC</td><td>DC için tasarlanmış</td><td>✅ En uygun</td></tr>
+</table>
+</div>
+
+<p>
+Karşılaştırma noktası şu: 12V 7Ah bir akü veya 12Ah LiFePO4, tam kısa devrede
+<strong>100-250 A</strong> verebilir. Bu, ucuz bir cam sigortanın kesme kapasitesinin çok üstünde.
+</p>
+
+<div class="ok">
+<p><strong>Pratik çözüm — hem cam yuvasını kullan hem güvenli ol:</strong>
+Seramik sigortalar cam sigortalarla <strong>aynı 5×20 mm ölçüdedir ve aynı yuvaya girer</strong>.
+Elinde cam sigorta yuvası varsa atma; içine cam yerine <strong>seramik (kum dolgulu)</strong>
+sigorta tak. Dışarıdan tek farkı beyaz/gri seramik gövde olması.</p>
+</div>
+
+<p>
+Yine de ana sigorta ve motor dalı için <strong>bıçak sigorta</strong> tercihim.
+Oto tipi olduğu için tam olarak bu iş için tasarlanmış: 32V DC, yüksek kesme kapasitesi,
+ucuz yuva, kolay bulunur ve renk kodu sayesinde değeri bir bakışta anlaşılır.
+</p>
+
+<h3>Sigorta nasıl bağlanır</h3>
+
+<div class="flow">DOĞRU:
+  Akü (+) ──[10-15 cm]──[SİGORTA]──[ŞALTER]──[yük]
+  Akü (−) ─────────────────────────────────── [yük]
+
+YANLIŞ:
+  Akü (+) ──────[uzun kablo]──────[SİGORTA]──[yük]
+                 ^^^^^^^^^^^^
+                 bu bölüm KORUMASIZ — şaseye sürtünüp
+                 kısa devre olursa sigorta devrede değil
+
+YANLIŞ:
+  Akü (−) ──[SİGORTA]──  ←  eksi hatta sigorta OLMAZ</div>
+
+<h4>Kurallar</h4>
+<ol>
+<li><strong>Artı (+) hatta, seri olarak.</strong> Eksi hatta asla sigorta koyma.</li>
+<li><strong>Aküye mümkün olduğunca yakın</strong> — ideali 10-15 cm. Akü ile sigorta arasındaki
+kablo korumasızdır; o bölüm ne kadar kısaysa risk o kadar azdır.</li>
+<li><strong>Sıra: Akü → Sigorta → Şalter → Yük.</strong> Sigorta önce gelir ki şalterin kendisi
+ve ona giden kablo da korunmuş olsun.</li>
+<li><strong>Her dala kendi sigortası.</strong> Ana sigorta + dal sigortaları birlikte kullanılır:
+küçük bir arızada sadece o dal atar, sistemin tamamı ölmez.</li>
+<li><strong>Yuva bağlantıları sıkı olmalı.</strong> Gevşek veya kötü sıkılmış bir kroşe ısınır —
+o zaman sigorta değil, yuva erir. Kroşe pensesi kullan, kabloyu lehimleyip yuvaya sokma
+(lehim titreşimde kırılır).</li>
+<li><strong>Atan sigortayı büyütme.</strong> Sigorta atıyorsa bu bir bilgidir, bir sorun değil.
+Önce nedenini bul. Tel sarmak, folyo koymak ölümcül.</li>
+</ol>
+
+<h4>Yuva tipleri</h4>
+<div class="scroll">
+<table>
+<tr><th>Tip</th><th>Nerede kullanılır</th></tr>
+<tr><td><strong>Kablo tipi (in-line)</strong></td><td>İki ucundan kablo çıkar, hattın ortasına girer. Senin için en pratik.</td></tr>
+<tr><td><strong>Panel tipi</strong></td><td>Kutu/panel üstüne vidalanır, dışarıdan çevirip değiştirilir. Şık ama şart değil.</td></tr>
+<tr><td><strong>Sigorta kutusu</strong></td><td>Çoklu dal için tek merkez. 2-3 dalın olacaksa düzeni çok kolaylaştırır.</td></tr>
+</table>
+</div>
+
+<h4>Cam/seramik sigortadaki harfler ne demek</h4>
+<p>
+Sigortanın metal kapağında <code>T5AL250V</code> gibi bir yazı olur:
+</p>
+<ul>
+<li><strong>F</strong> = hızlı (fast) — elektronik devreler için</li>
+<li><strong>T</strong> = gecikmeli (time-delay) — kalkış akımı olan yükler için. <strong>Sana bu lazım.</strong></li>
+<li><strong>M</strong> = orta</li>
+</ul>
+<p>
+Buck regülatörün giriş kondansatörleri ilk bağlandığında kısa ama sert bir akım çeker.
+Hızlı (F) sigorta bunu arıza sanıp her açılışta atar. <strong>Gecikmeli (T) tip kullan.</strong>
+</p>
+<p>
+Bıçak sigortalarda böyle bir ayrım yoktur — yapıları gereği zaten hafif gecikmelidir.
+</p>
+
+<h2 id="hesap">3. Akım hesabı ve sigorta değerleri</h2>
+
+<h3>Yöntem</h3>
+<pre><code>Sigorta değeri ≈ 1.5 × (o dalın normal maksimum akımı)
+
+sonra:
+  → bir üst standart değere yuvarla
+  → kablonun taşıma kapasitesini AŞMAMALI</code></pre>
+
+<h3>PS2 dalı</h3>
+<div class="scroll">
+<table>
+<tr><th>Adım</th><th>Hesap</th><th>Sonuç</th></tr>
+<tr><td>PS2 tüketimi (disk dönmeden, homebrew)</td><td>ölçülmeli, tahmin</td><td>~15-25 W</td></tr>
+<tr><td>Buck verimi</td><td>÷ 0.87</td><td>~29 W giriş</td></tr>
+<tr><td>Akü tarafı akımı</td><td>29 W ÷ 12.8 V</td><td><strong>~2.3 A</strong></td></tr>
+<tr><td>Sigorta</td><td>2.3 × 1.5 ≈ 3.5 → yuvarla</td><td><strong>5 A gecikmeli</strong></td></tr>
+</table>
+</div>
+<p>
+Rapordaki 7.5 A da kabul edilebilir ve bıçak sigortada standart bir değerdir; sadece
+biraz daha gevşek koruma sağlar. Kablon 7.5 A'i taşıyorsa sorun yok.
+</p>
+
+<div class="warn">
+<p><strong>PS2'nin gerçek tüketimini ölç.</strong> Yukarıdaki 15-25 W bir tahmin.
+Akü hattına seri bir ampermetre (veya panel tip volt/ampermetre) koyup <code>role.elf</code>
+çalışırken oku. Bu tek ölçüm hem sigorta değerini hem çalışma süresi hesabını netleştirir.
+Adaptör etiketindeki 5.65 A <em>maksimum kapasitedir</em>, gerçek tüketim değil.</p>
+</div>
+
+<h3>Motor dalı</h3>
+<p>
+Bu dalın değeri <strong>tamamen motorlarına bağlı</strong> ve ölçmeden hesaplanamaz.
+Yöntem:
+</p>
+<ol>
+<li>Bir motoru besleyip <strong>boştaki akımını</strong> ölç (serbest dönerken)</li>
+<li>Milini elinle tutup durdur, <strong>stall (kilitli rotor) akımını</strong> ölç — bu en kötü durum</li>
+<li>Normal sürüş akımı ≈ boşta akımın 2-3 katı (yük ve rampa nedeniyle)</li>
+<li>Aynı anda kaç motor çalışacaksa çarp</li>
+</ol>
+
+<div class="scroll">
+<table>
+<tr><th>Tipik küçük DC redüktörlü motor</th><th>Değer</th></tr>
+<tr><td>Boşta akım</td><td>0.1-0.3 A</td></tr>
+<tr><td>Yük altında</td><td>0.5-1.5 A</td></tr>
+<tr><td>Stall akımı</td><td>2-4 A</td></tr>
+<tr><td>4 motor, yük altında</td><td>~2-6 A</td></tr>
+<tr><td>4 motor, hepsi stall</td><td>8-16 A</td></tr>
+</table>
+</div>
+<p>
+Bu değerlerle <strong>15 A bıçak sigorta</strong> makul bir başlangıç: normal sürüşte atmaz,
+gerçek bir kilitlenmede (tekerlek sıkıştı, motor tutukluk yaptı) atar. Zaten istediğin de bu.
+</p>
+
+<h4>Bıçak sigorta renk kodları</h4>
+<div class="scroll">
+<table>
+<tr><th>Renk</th><th>Değer</th><th>Bu projede</th></tr>
+<tr><td>Bej / açık kahve</td><td>5 A</td><td>PS2 dalı</td></tr>
+<tr><td>Kahverengi</td><td>7.5 A</td><td>PS2 dalı (alternatif)</td></tr>
+<tr><td>Kırmızı</td><td>10 A</td><td>—</td></tr>
+<tr><td>Mavi</td><td>15 A</td><td>Motor dalı</td></tr>
+<tr><td>Sarı</td><td>20 A</td><td>Ana sigorta</td></tr>
+<tr><td>Yeşil</td><td>30 A</td><td>—</td></tr>
+</table>
+</div>
+
+<h2 id="kablo">4. Kablo seçimi</h2>
+
+<div class="scroll">
+<table>
+<tr><th>Hat</th><th>Akım</th><th>Kesit</th><th>Not</th></tr>
+<tr><td>Akü → ana sigorta → şalter</td><td>~20 A</td><td><strong>4.0 mm²</strong></td><td>Kısa ve kalın</td></tr>
+<tr><td>Motor dalı</td><td>~15 A</td><td><strong>2.5 mm²</strong></td><td>Kalkış akımını taşımalı</td></tr>
+<tr><td>PS2 dalı (akü→buck)</td><td>~3 A</td><td><strong>1.0 mm²</strong></td><td></td></tr>
+<tr><td>Buck → PS2 DC jakı</td><td>~3 A</td><td><strong>1.0 mm²</strong></td><td></td></tr>
+<tr><td>WiFi köprü 5V</td><td>~0.3 A</td><td>0.5 mm²</td><td></td></tr>
+</table>
+</div>
+
+<div class="warn">
+<p><strong>Hareket eden bir araçta tek damarlı (masif) kablo kullanma.</strong>
+Titreşimden metal yorulur ve kablo bir süre sonra izolasyonun içinde görünmeden kırılır —
+bulması çok zor bir arıza olur.</p>
+<p>Kullan: <strong>silikon izoleli, çok telli (litze) kablo.</strong> Esnek, ısıya dayanıklı
+ve titreşime karşı dayanıklıdır. RC/drone malzemecilerinde bol bulunur.</p>
+</div>
+
+<h4>Kablolama disiplini</h4>
+<ul>
+<li>Artı hatları <strong>kırmızı</strong>, eksi hatları <strong>siyah</strong>. İstisna yapma.</li>
+<li>Tüm bağlantılar <strong>kroşelenmiş</strong> (crimped) olsun; gerekiyorsa üstüne lehim değil,
+makaron (ısı ile daralan) geç.</li>
+<li>Kabloları tekerleklerden, dişlilerden ve PS2'nin <strong>fan girişinden</strong> uzak tut.</li>
+<li>Her kablo demetine <strong>gerilim boşaltma</strong> (strain relief) yap — kablo kendi
+lehim/kroşe noktasından çekilmesin, kelepçeden çekilsin.</li>
+<li>Konnektör olarak <strong>XT60</strong> (güç) ve <strong>XT30</strong> (dallar) kullan.
+Kutuplu oldukları için ters takılamazlar.</li>
+</ul>
+
+<h2 id="buck">5. Buck regülatör ayarı</h2>
+
+<p>
+Rapordaki <strong>XL4016</strong> seçimi doğru: 4-40V giriş, ayarlanabilir çıkış, 8A sınıfı.
+</p>
+
+<div class="warn">
+<p><strong>Ucuz modüllerde etiketteki amper değerine güvenme.</strong> "8A" yazan bir modül
+soğutucusuz ve hava akımı olmadan 3-4 A'de ısınıp korumaya girer.
+Sen ~3 A çekeceksin, yani 8A sınıfı modül doğru seçim — ama <strong>soğutucusunu tak</strong>
+ve üzerine hava gelecek şekilde yerleştir.</p>
+</div>
+
+<h3>Çıkış voltajını ayarlama — sıra çok önemli</h3>
+
+<div class="step">
+<span class="step-n">ADIM 1</span>
+<p><strong>Önce orijinal adaptörün polaritesini ölç.</strong> PS2'nin DC jakında hangi ucun (+)
+olduğunu varsayma — orijinal adaptörü prize tak, multimetreyle jakın iç ve dış ucunu ölç, not al.
+Buck çıkışını buna göre bağlayacaksın.</p>
+</div>
+
+<div class="step">
+<span class="step-n">ADIM 2</span>
+<p><strong>Buck'ı aküye bağla, çıkışına HİÇBİR ŞEY bağlama.</strong> PS2 kesinlikle bağlı olmasın.</p>
+</div>
+
+<div class="step">
+<span class="step-n">ADIM 3</span>
+<p><strong>Multimetreyi buck çıkışına bağla, potansiyometreyi yavaşça çevir.</strong>
+Çoğu modülde çok turlu (multi-turn) trimpot vardır, birkaç tur çevirmen gerekebilir.
+Hedef: <strong>8.50 V</strong>. Acele etme, yavaş çevir.</p>
+</div>
+
+<div class="step">
+<span class="step-n">ADIM 4</span>
+<p><strong>Sahte yükle test et.</strong> Çıkışa bir 12V araç ampulü (veya güç direnci) bağla.
+Voltaj 8.50V'ta duruyor mu? Yük altında düşüyorsa modül yetersiz demektir.
+15 dakika bırak, buck'ın sıcaklığını elinle kontrol et.</p>
+</div>
+
+<div class="step">
+<span class="step-n">ADIM 5</span>
+<p><strong>Yükü çıkar, voltajı tekrar doğrula, sonra PS2'yi bağla.</strong>
+Bağlarken önce (−), sonra (+).</p>
+</div>
+
+<div class="danger">
+<p><strong>Bu sırayı atlama.</strong> Trimpotu PS2 bağlıyken çevirmek, bir anlık 20V'un
+konsola gitmesi demektir. PS2 o anda ölür ve geri dönüşü yoktur.</p>
+</div>
+
+<h3>Giriş marjı kontrolü</h3>
+<p>
+Buck'ın çalışabilmesi için giriş, çıkıştan belirli bir miktar yüksek olmalı (dropout).
+Akün boşalırken bu marj daralır:
+</p>
+<div class="scroll">
+<table>
+<tr><th>Akü</th><th>Dolu</th><th>Boş (kesim)</th><th>8.5V için marj</th><th>Değerlendirme</th></tr>
+<tr><td>12.8V LiFePO4 (4S)</td><td>14.6 V</td><td>~10.0 V</td><td><strong>1.5-6 V</strong></td><td>✅ Rahat</td></tr>
+<tr><td>12V kurşun akü</td><td>13.8 V</td><td>~10.8 V</td><td>2.3-5.3 V</td><td>✅ İyi</td></tr>
+<tr><td>3S LiPo</td><td>12.6 V</td><td>9.9 V</td><td>1.4-4.1 V</td><td>⚠ Boşa yakınken riskli</td></tr>
+</table>
+</div>
+
+<h2 id="batarya">6. Batarya seçimi ve koruması</h2>
+
+<div class="note">
+<p><strong>LiPo yerine LiFePO4 öneriyorum</strong> — rapordaki 12.8V LiFePO4 seçimi doğru.</p>
+<p>Sebep: Gezen, çarpan, devrilen bir araçta batarya <strong>darbe görecek</strong>.
+LiPo delindiğinde veya ezildiğinde termal kaçış yapar ve yangın çıkarır. LiFePO4 kimyası
+bu konuda belirgin şekilde daha güvenlidir, ayrıca dahili BMS'li satılır, deşarj eğrisi
+daha düz ve çevrim ömrü kat kat uzundur. Fiyat farkı bu projede sigorta primi gibi düşün.</p>
+</div>
+
+<h4>Zorunlu koruma katmanları</h4>
+<ul>
+<li><strong>BMS</strong> — LiFePO4 paketlerinde genelde dahili gelir. Aşırı deşarj, aşırı şarj
+ve kısa devre koruması sağlar. Dahili değilse ayrıca al.</li>
+<li><strong>Düşük voltaj alarmı / göstergesi</strong> — panel tipi voltmetre (85-250 TL) veya
+sesli alarm. PS2 gerilim düşünce <em>zarifçe kapanmaz</em>, aniden ölür.</li>
+<li><strong>Ana şalter</strong> — dal akımlarının toplamını taşıyacak kapasitede olmalı
+(en az 25-30 A). Kolay ulaşılabilir bir yere koy.</li>
+</ul>
+
+<div class="danger">
+<p><strong>Hafıza kartı uyarısı:</strong> PS2 ayar kaydederken (<code>mc0:SYS-CONF/ROLECFG.TXT</code>)
+elektrik kesilirse hafıza kartı bozulabilir — ve o kartın üstünde <strong>FreeMCBoot</strong> var.
+Batarya alarmı çaldığında ayar kaydetme, önce şarj et.</p>
+</div>
+
+<h4>Şarj kuralları</h4>
+<ul>
+<li>Bataryayı <strong>araçtan çıkarıp</strong> şarj et.</li>
+<li>Şarj cihazı kimyaya uygun olsun — LiFePO4 şarj cihazı ile kurşun akü şarj cihazı aynı değildir.</li>
+<li><strong>Gözetimsiz şarj etme.</strong> Yanıcı olmayan bir zeminde, tercihen şarj çantasında.</li>
+</ul>
+
+<h2 id="motor">7. Motor bağlantısı ve röle kontakları</h2>
+
+<div class="note">
+<p><strong>Güncel araç:</strong> Dört adet RS-540 motor vardır. Soldaki iki motor paralel
+bir grup, sağdaki iki motor paralel bir gruptur. Seda Elektronik 8'li USB röle kartının
+yalnız ilk dört rölesi yön vermek için kullanılır. Kartın 5 V güç USB'si ve veri USB'si
+PS2 Slim'in iki ayrı USB portuna bağlıdır.</p>
+</div>
+
+<h3>Röle kontağı = galvanik izolasyon</h3>
+<p>
+Röle kontağı mekanik bir anahtardır; bobin tarafıyla kontak tarafı <strong>elektriksel olarak
+ayrıdır</strong>. Yani PS2 tarafı, motor gücüne hiç temas etmez. Bu, mimarinin en güzel yanı.
+</p>
+
+<h3>Mevcut çift yönlü SPDT bağlantısı</h3>
+<div class="ok">
+<p>Bu araçta her röle bir motor ucunun polaritesini seçer:</p>
+<ul>
+<li>Dört rölenin <strong>NC</strong> uçları motor beslemesinin (−) hattına bağlıdır.</li>
+<li>Dört rölenin <strong>NO</strong> uçları motor beslemesinin (+) hattına bağlıdır.</li>
+<li><strong>COM1 ve COM2</strong>, paralel bağlı iki sol motor grubunun iki ucuna gider.</li>
+<li><strong>COM3 ve COM4</strong>, paralel bağlı iki sağ motor grubunun iki ucuna gider.</li>
+<li>Bir gruptaki iki röleden yalnız biri çekince uçlar zıt polarite görür ve motorlar döner.</li>
+<li>İki röle de bırakılmışsa iki motor ucu da (−); ikisi de çekilmişse iki uç da (+) olur.
+Her iki durumda da motor üzerindeki gerilim sıfırdır ve motor durur.</li>
+</ul>
+<p>Bu bağlantıda dört rölenin birden çekmesi besleme kısa devresi oluşturmaz; iki motor
+grubunun da iki ucu (+) olduğundan motorlar durur. Yine de yazılım karşıt komutlarda
+bütün röleleri bırakarak tanımlı ve güvenli duruma geçer.</p>
+</div>
+
+<h3>Bobin beslemesi — kontrol et</h3>
+<div class="warn">
+<p>Seda röle kartının <strong>bobinleri nereden beslendiğini ölçerek doğrula.</strong>
+Eğer bobinler USB'den besleniyorsa: 8 röle × ~70 mA = 560 mA, USB portunun nominal
+500 mA sınırının üstünde. 4 röle aynı anda çekerse ~280 mA — sınıra yakın.</p>
+<p>Kartta <code>VCC</code>/<code>JD-VCC</code> jumper'ı varsa (çoğu röle kartında vardır),
+jumper'ı çıkarıp bobinleri <strong>ayrı 5V hattından</strong> besle. USB'de sadece veri ve
+kart lojiği kalsın.</p>
+</div>
+
+<h3>DC motor anahtarlamanın bedeli</h3>
+<p>
+Röle kontakları DC ve endüktif yük (motor) anahtarlarken aşınır. AC'de ark her yarım
+saltta kendiliğinden söner, DC'de sönmez — kontak yüzeyi zamanla çukurlaşır, en sonunda
+yapışır. Bu, Faz 1 için kabul edilebilir bir bedel ama bilmen gerekiyor:
+</p>
+<ul>
+<li>Motor polaritesi ters çevrildiği için motor uçlarına tek yönlü <strong>1N5408 flyback
+diyodu bağlama</strong>; yönlerden birinde beslemeyi kısa devre eder.</li>
+<li>Kontak arkı ve motor paraziti için çift yönlü TVS veya çift yön çalışmaya uygun RC
+snubber kullanılabilir. Gerilim/enerji değeri ölçüme göre seçilmelidir.</li>
+<li>Röleleri saniyede birkaç kez tıklatma — yazılım zaten sadece durum değişiminde komut
+gönderiyor, bu iyi</li>
+<li>Kalıcı çözüm PWM'li motor sürücüdür (PIC kartı ile, sonraki fazda)</li>
+</ul>
+
+<h3>Tank tipi sürüş bağlantısı</h3>
+<div class="scroll">
+<table>
+<tr><th>Röle</th><th>Görev</th><th>Tuş</th><th>Komut (ON/OFF)</th></tr>
+<tr><td>1</td><td>Sol grup, COM1 ucunu (+) yapar</td><td>X veya Yuvarlak</td><td>1 / 17</td></tr>
+<tr><td>2</td><td>Sol grup, COM2 ucunu (+) yapar</td><td>Üçgen veya Kare</td><td>2 / 18</td></tr>
+<tr><td>3</td><td>Sağ grup, COM3 ucunu (+) yapar</td><td>X veya Kare</td><td>3 / 19</td></tr>
+<tr><td>4</td><td>Sağ grup, COM4 ucunu (+) yapar</td><td>Üçgen veya Yuvarlak</td><td>4 / 20</td></tr>
+</table>
+</div>
+
+<div class="danger">
+<p><strong>Yazılımsal kilit etkindir.</strong> X+Üçgen veya Kare+Yuvarlak gibi karşıt
+komutlarda <code>main.c</code> her iki motor grubunun rölelerini OFF yapar. Ayrıca yön
+değişiminde ayarlanabilir ölü zaman uygular. Mevcut SPDT bağlantıda aynı grubun iki
+rölesinin birlikte çekmesi motorun iki ucunu da (+) yapar; beslemeyi kısa devre etmez.</p>
+</div>
+
+<h2 id="montaj">8. Montaj sırası ve test protokolü</h2>
+
+<p>Her adımın sonunda dur ve doğrula. Adım atlamak bu fazın tek gerçek riski.</p>
+
+<div class="step">
+<span class="step-n">1</span>
+<p><strong>Ölçümler.</strong> PS2 DC jak polaritesi. Motorların boşta ve stall akımı.
+PS2'nin gerçek tüketimi (orijinal adaptörle, araya ampermetre koyarak).</p>
+</div>
+
+<div class="step">
+<span class="step-n">2</span>
+<p><strong>Buck ayarı.</strong> Yukarıdaki 5 adım. Sahte yükle 15 dakika test.
+PS2 hâlâ bağlı değil.</p>
+</div>
+
+<div class="step">
+<span class="step-n">3</span>
+<p><strong>PS2'yi masada bataryayla çalıştır.</strong> Araç yok, motor yok, sadece
+akü → sigorta → şalter → buck → PS2. <code>role.elf</code> açılıyor mu? Kol çalışıyor mu?
+Yarım saat bırak, buck'ın sıcaklığını kontrol et.</p>
+</div>
+
+<div class="step">
+<span class="step-n">4</span>
+<p><strong>Röle kartını ekle, motorsuz test et.</strong> Kontaklara sadece multimetre
+(süreklilik modunda) veya küçük bir LED bağla. Tuşlara bastıkça doğru kontaklar kapanıyor mu?
+Bu adım kablolama hatalarını motor yakmadan yakalar.</p>
+</div>
+
+<div class="step">
+<span class="step-n">5</span>
+<p><strong>Tek motor bağla.</strong> Araç tekerleri havada. İleri/geri doğru yönde mi?
+Ters dönüyorsa motor uçlarını değiştir.</p>
+</div>
+
+<div class="step">
+<span class="step-n">6</span>
+<p><strong>Dört motoru bağla, tekerlekler havada test et.</strong> Sağ/sol dönüş doğru mu?
+Akım çekişini ampermetreden izle.</p>
+</div>
+
+<div class="step">
+<span class="step-n">7</span>
+<p><strong>Yere indir, kısa mesafede sür.</strong> İlk sürüşü kısa tut, ısınma ve
+gerilim düşüşünü gözle.</p>
+</div>
+
+<h3>İlk çalıştırma kontrol listesi</h3>
+<ul class="chk">
+<li>Ana sigorta akünün (+) ucuna 15 cm'den yakın</li>
+<li>Her iki dalın kendi sigortası var</li>
+<li>Eksi hatta hiç sigorta yok</li>
+<li>Buck çıkışı yüksüzken ve yük altında 8.50 V ölçüldü</li>
+<li>PS2 jak polaritesi orijinal adaptörle karşılaştırılarak doğrulandı</li>
+<li>NC uçları (−), NO uçları (+); sol motorlar COM1-COM2, sağ motorlar COM3-COM4 arasında</li>
+<li>Motor uçlarında tek yönlü flyback diyot yok; koruma çift yönlü TVS/RC snubber</li>
+<li>Yazılımsal karşıt-komut kilidi ve yön değiştirme ölü zamanı test edildi</li>
+<li>Tüm kablolar çok telli silikon, kroşelenmiş, makaronlu</li>
+<li>Kablolar tekerlek ve PS2 fan girişinden uzak</li>
+<li>Batarya sağlam sabitlenmiş, darbe görmeyecek konumda</li>
+<li>Ana şalter kolay ulaşılabilir yerde</li>
+<li>Voltmetre/alarm takılı ve okunabiliyor</li>
+<li>Yangın söndürücü veya kum kovası aynı odada (ilk testlerde)</li>
+</ul>
+
+<h2 id="liste">9. Alışveriş listesi</h2>
+
+<div class="scroll">
+<table>
+<tr><th>Parça</th><th>Özellik</th><th>Adet</th><th>Not</th></tr>
+<tr><td>LiFePO4 akü</td><td>12.8V, 12Ah, dahili BMS</td><td>1</td><td>Tercih edilen. Kurşun akü daha ucuz ama ağır</td></tr>
+<tr><td>XL4016 buck</td><td>4-40V→1.25-36V, 8A, soğutuculu</td><td>1</td><td>PS2 için, 8.50V'a ayarlanacak</td></tr>
+<tr><td>Mini buck (5V)</td><td>5V 2A</td><td>1</td><td>WiFi köprü için (Faz 2)</td></tr>
+<tr><td>Bıçak sigorta yuvası</td><td>Kablo tipi veya kutu</td><td>3</td><td>Ana + PS2 dalı + motor dalı</td></tr>
+<tr><td>Bıçak sigorta</td><td>20A / 5A / 15A</td><td>her birinden birkaç</td><td>Yedek al, atacak</td></tr>
+<tr><td>Ana şalter</td><td>≥30A DC</td><td>1</td><td>Kolay ulaşılır yere</td></tr>
+<tr><td>Panel voltmetre/ampermetre</td><td>0-100V / 0-10A</td><td>1</td><td>Ölçüm ve arıza takibi için</td></tr>
+<tr><td>Silikon kablo</td><td>4.0 / 2.5 / 1.0 mm²</td><td>—</td><td>Çok telli, masif değil</td></tr>
+<tr><td>XT60 / XT30 konnektör</td><td>—</td><td>birkaç çift</td><td>Ters takmaya karşı</td></tr>
+<tr><td>Motor darbe bastırma</td><td>Çift yönlü TVS veya uygun RC snubber</td><td>Ölçüme göre</td><td>Tek yönlü 1N5408 kullanılmaz</td></tr>
+<tr><td>Kroşe pensesi + kroşe seti</td><td>—</td><td>1</td><td>Sağlam bağlantı için şart</td></tr>
+<tr><td>Makaron seti</td><td>ısıyla daralan</td><td>1</td><td></td></tr>
+<tr><td>LiFePO4 şarj cihazı</td><td>kimyaya uygun</td><td>1</td><td>Kurşun akü şarjı ile aynı değil</td></tr>
+</table>
+</div>
+
+<p>
+Cam sigorta yuvası almışsan atma — içine <strong>seramik (kum dolgulu) 5×20 gecikmeli</strong>
+sigorta takarak PS2 dalında rahatlıkla kullanabilirsin.
+</p>
+
+<footer>
+Faz 1 elektronik tasarımı · <code>C:\ps2dev\projeler\role</code><br>
+İlgili: <code>PROJE_FAZLARI.html</code> (yol haritası) ·
+<code>PS2_Slim_Batarya_Guc_Raporu.html</code> (güç ve maliyet analizi) ·
+<code>PROJE_REHBERI.html</code> (yazılım mimarisi)
+</footer>
+
+</main>
+</body>
+</html>
