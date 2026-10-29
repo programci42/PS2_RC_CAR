@@ -1,3 +1,5 @@
+$ErrorActionPreference = "Stop"
+Set-Location -LiteralPath $PSScriptRoot
 $env:PS2DEV = "C:/ps2dev"
 $env:PS2SDK = "C:/ps2dev/ps2sdk"
 $env:Path = "C:\msys64\usr\bin;C:\msys64\mingw32\bin;C:\ps2dev\bin;C:\ps2dev\ee\bin;C:\ps2dev\iop\bin;C:\ps2dev\dvp\bin;C:\ps2dev\ps2sdk\bin;C:\ps2dev\ps2sdk\ports\bin;" + $env:Path

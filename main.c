@@ -6,8 +6,8 @@
  * Four physical motors in two parallel side groups. Each side is reversed
  * through a pair of SPDT relays (relay ON = COM->NO = "+",
  * relay OFF = COM->NC = "-"):
- *   Left motor pair:  relay 1 = forward terminal, relay 2 = reverse terminal
- *   Right motor pair: relay 3 = forward terminal, relay 4 = reverse terminal
+ *   Defaults: left R1/R2, right R3/R4. Each side can select any disjoint pair
+ *   among R1/R2, R3/R4, R5/R6 and R7/R8 in Settings.
  *
  * Button mapping (level-triggered, held state each frame):
  *   X        -> relay 1 + relay 3  (both motors forward)
@@ -15,8 +15,9 @@
  *   SQUARE   -> relay 2 + relay 3  (turn)
  *   CIRCLE   -> relay 1 + relay 4  (turn other way)
  *
- * Software interlock: relay 1 and relay 2 (same motor) must never be ON
- * together, same for relay 3 and relay 4. If the buttons driving both
+ * Normal driving interlocks the two relays of every selected pair. The
+ * one-time startup check deliberately energises all eight, then stops them.
+ * If the buttons driving both
  * sides of a motor are held at once, that motor's relays are forced OFF
  * instead of picking one, so opposing button presses never fight over
  * the same motor.
@@ -46,10 +47,10 @@
 #include <debug.h>
 
 #include "seda_relay_rpc.h"
+#include "relay_policy.h"
 
 #define PAD_PORT 0
 #define PAD_SLOT 0
-#define RELAY_COUNT 4
 #define SETTINGS_DIR "mc0:SYS-CONF"
 #define SETTINGS_FILE "mc0:SYS-CONF/ROLECFG.TXT"
 #define PASSWORD_LEN 12
@@ -60,7 +61,7 @@
 #define DEAD_TIME_DEFAULT_MS 100
 #define DEAD_TIME_MAX_MS 1000
 #define DEAD_TIME_STEP_MS 10
-#define SETTING_COUNT 5
+#define SETTING_COUNT 7
 
 enum ProgramAction {
     PROGRAM_ACTION_CROSS = 0,
@@ -76,6 +77,9 @@ typedef struct {
     int pid;
     int auto_load_usb;
     int dead_time_ms;
+    int left_group;
+    int right_group;
+    int language;
 } AppSettings;
 
 enum UiState {
@@ -91,7 +95,7 @@ extern unsigned char seda_relay_irx[];
 extern unsigned int size_seda_relay_irx;
 
 static char pad_buf[256] __attribute__((aligned(64)));
-static u8 relay_state[RELAY_COUNT] = {0, 0, 0, 0};
+static u8 relay_state[RELAY_COUNT] = {0};
 static SifRpcClientData_t relay_rpc __attribute__((aligned(64)));
 static SedaRelayRpcPacket relay_rpc_packet __attribute__((aligned(64)));
 static int relay_rpc_ready = 0;
@@ -119,8 +123,15 @@ static AppSettings settings = {
     0x178e,
     0x07d9,
     0,
-    DEAD_TIME_DEFAULT_MS
+    DEAD_TIME_DEFAULT_MS,
+    0, 1, 0
 };
+
+#include "ui_locale.h"
+
+static int startup_test_state = 0; /* 0: waiting, 1: complete, -1: failed */
+static int drive_inhibited = 1;
+static int relay_fault = 0;
 
 /* Set when relays were switched off; the next energise waits the dead time. */
 static int dead_time_pending = 0;
@@ -129,14 +140,14 @@ static const u8 relay_on_command[RELAY_COUNT] = {
     1,
     2,
     3,
-    4
+    4, 5, 6, 7, 8
 };
 
 static const u8 relay_off_command[RELAY_COUNT] = {
     17,
     18,
     19,
-    20
+    20, 21, 22, 23, 24
 };
 
 static const char *usb_send_mode_names[SEDA_RELAY_MODE_COUNT] = {
@@ -164,16 +175,17 @@ static const u16 settings_password[PASSWORD_LEN] = {
 static const char hex_keys[] = "0123456789ABCDEF";
 
 static int relay_get_status(void);
+static int relays_all_off(void);
 
 static const char *program_action_name(int action)
 {
     switch (action) {
-    case PROGRAM_ACTION_CROSS: return "X / FORWARD";
-    case PROGRAM_ACTION_CIRCLE: return "CIRCLE / TURN";
-    case PROGRAM_ACTION_TRIANGLE: return "TRIANGLE / REVERSE";
-    case PROGRAM_ACTION_SQUARE: return "SQUARE / TURN";
-    case PROGRAM_ACTION_WAIT: return "R1 / WAIT";
-    default: return "UNKNOWN";
+    case PROGRAM_ACTION_CROSS: return T("X / FORWARD");
+    case PROGRAM_ACTION_CIRCLE: return T("CIRCLE / TURN");
+    case PROGRAM_ACTION_TRIANGLE: return T("TRIANGLE / REVERSE");
+    case PROGRAM_ACTION_SQUARE: return T("SQUARE / TURN");
+    case PROGRAM_ACTION_WAIT: return T("R1 / WAIT");
+    default: return T("UNKNOWN");
     }
 }
 
@@ -182,11 +194,11 @@ static void log_printf(const char *format, ...)
     va_list args;
 
     va_start(args, format);
-    vprintf(format, args);
+    vprintf(ui_translate(format, settings.language), args);
     va_end(args);
 
     va_start(args, format);
-    scr_vprintf(format, args);
+    scr_vprintf(ui_translate(format, settings.language), args);
     va_end(args);
 }
 
@@ -281,6 +293,8 @@ static void apply_settings(void)
     settings.vid &= 0xffff;
     settings.pid &= 0xffff;
     settings.auto_load_usb = settings.auto_load_usb ? 1 : 0;
+    normalize_groups(&settings.left_group, &settings.right_group);
+    settings.language = settings.language == 1 ? 1 : 0;
 
     if (settings.dead_time_ms < 0) {
         settings.dead_time_ms = 0;
@@ -351,6 +365,9 @@ static int load_settings_from_mc(void)
     settings.pid = parse_hex_after(buffer, "pid=", settings.pid);
     settings.auto_load_usb = parse_decimal_after(buffer, "autoload=", settings.auto_load_usb);
     settings.dead_time_ms = parse_decimal_after(buffer, "deadms=", settings.dead_time_ms);
+    settings.left_group = parse_decimal_after(buffer, "leftgroup=", settings.left_group);
+    settings.right_group = parse_decimal_after(buffer, "rightgroup=", settings.right_group);
+    settings.language = parse_decimal_after(buffer, "language=", settings.language);
     apply_settings();
     settings_loaded = 1;
 
@@ -375,9 +392,9 @@ static int save_settings_to_mc(void)
     hex4_to_string(settings.pid, pid);
 
     len = snprintf(buffer, sizeof(buffer),
-                   "ROLECFG v1\nmode=%d\nvid=%s\npid=%s\nautoload=%d\ndeadms=%d\n",
+                   "ROLECFG v2\nmode=%d\nvid=%s\npid=%s\nautoload=%d\ndeadms=%d\nleftgroup=%d\nrightgroup=%d\nlanguage=%d\n",
                    settings.usb_mode, vid, pid, settings.auto_load_usb,
-                   settings.dead_time_ms);
+                   settings.dead_time_ms, settings.left_group, settings.right_group, settings.language);
 
     fd = open(SETTINGS_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd < 0) {
@@ -402,25 +419,27 @@ static void show_idle_screen(const char *message)
     print_header();
 
     if (message != NULL) {
-        log_printf("%s\n\n", message);
+        log_printf("%s\n\n", T(message));
     }
 
-    log_printf("USB init: %s\n", usb_init_attempted ? "attempted" : "not loaded");
+    log_printf("USB init: %s\n", T(usb_init_attempted ? "attempted" : "not loaded"));
     log_printf("USB relay status: %d\n\n", relay_status);
     log_printf("USB mode: %d %s\n\n", usb_send_mode, usb_send_mode_names[usb_send_mode]);
-    log_printf("Settings: %s\n", settings_loaded ? "loaded from MC" : "defaults");
+    log_printf("Settings: %s\n", T(settings_loaded ? "loaded from MC" : "defaults"));
     log_printf("VID/PID : %04X/%04X\n", settings.vid, settings.pid);
     log_printf("Dead time: %d ms\n\n", settings.dead_time_ms);
-    log_printf("X      -> Relay 1+3 (motor A+B fwd)\n");
-    log_printf("Triangle -> Relay 2+4 (motor A+B rev)\n");
-    log_printf("Square -> Relay 2+3 (turn)\n");
-    log_printf("Circle -> Relay 1+4 (turn)\n");
+    log_printf("Left motors: R%d & R%d   Right: R%d & R%d\n",settings.left_group*2+1,settings.left_group*2+2,settings.right_group*2+1,settings.right_group*2+2);
+    log_printf("X -> R%d+R%d : forward\n",settings.left_group*2+1,settings.right_group*2+1);
+    log_printf("Triangle -> R%d+R%d : reverse\n",settings.left_group*2+2,settings.right_group*2+2);
+    log_printf("Square -> R%d+R%d : turn left\n",settings.left_group*2+2,settings.right_group*2+1);
+    log_printf("Circle -> R%d+R%d : turn right\n",settings.left_group*2+1,settings.right_group*2+2);
+    log_printf("Startup 100ms: %s\n",ui_translate(startup_test_state>0?"complete":startup_test_state<0?"failed - drive blocked":"waiting for USB",settings.language));
     log_printf("Opposing pair held -> that motor OFF\n\n");
     log_printf("L1     : load USB relay driver\n");
     log_printf("L2     : run program saved on memory card\n");
     log_printf("R1     : settings\n");
-    log_printf("SELECT: clear screen\n");
-    log_printf("START : restart program\n");
+    log_printf("SELECT: emergency stop\n");
+    log_printf("START : record program\n");
     log_printf("START+SELECT: PS2 main menu\n");
 }
 
@@ -452,7 +471,7 @@ static void show_settings_screen(const char *message)
     log_printf("SETTINGS\n\n");
 
     if (message) {
-        log_printf("%s\n\n", message);
+        log_printf("%s\n\n", T(message));
     }
 
     marker = selected_setting == 0 ? '>' : ' ';
@@ -465,10 +484,15 @@ static void show_settings_screen(const char *message)
     log_printf("%c PID      : %04X\n", marker, settings.pid);
 
     marker = selected_setting == 3 ? '>' : ' ';
-    log_printf("%c Auto USB : %s\n", marker, settings.auto_load_usb ? "ON" : "OFF");
+    log_printf("%c Dead time: %d ms\n", marker, settings.dead_time_ms);
 
     marker = selected_setting == 4 ? '>' : ' ';
-    log_printf("%c Dead time: %d ms\n", marker, settings.dead_time_ms);
+    log_printf("%c Left motors : R%d & R%d\n", marker, settings.left_group*2+1, settings.left_group*2+2);
+    marker = selected_setting == 5 ? '>' : ' ';
+    log_printf("%c Right motors: R%d & R%d\n", marker, settings.right_group*2+1, settings.right_group*2+2);
+    marker = selected_setting == 6 ? '>' : ' ';
+    log_printf("%c Language: %s\n", marker, settings.language ? "TURKCE" : "ENGLISH");
+    log_printf("Other motor's group is skipped automatically.\n");
 
     log_printf("\nUP/DOWN    : select\n");
     log_printf("LEFT/RIGHT : change\n");
@@ -504,7 +528,7 @@ static void show_hex_input_screen(void)
 
 static void die(const char *message)
 {
-    log_printf("%s\n", message);
+    log_printf("%s\n", T(message));
     SleepThread();
 }
 
@@ -705,7 +729,7 @@ static void show_relay_event(int relay, int enabled, u8 command)
     cls();
     print_header();
     log_printf("Relay  : %d\n", relay + 1);
-    log_printf("State  : %s\n", enabled ? "ON" : "OFF");
+    log_printf("State  : %s\n", T(enabled ? "ON" : "OFF"));
     log_printf("Command: %u\n\n", command);
     log_printf("USB mode=%d %s\n", usb_send_mode, usb_send_mode_names[usb_send_mode]);
     log_printf("USB result=%d status=%d\n", last_relay_result, last_relay_status);
@@ -713,13 +737,15 @@ static void show_relay_event(int relay, int enabled, u8 command)
     log_printf("L1     : load USB relay driver\n");
     log_printf("L2     : run program saved on memory card\n");
     log_printf("R1     : settings\n");
-    log_printf("SELECT: clear screen\n");
-    log_printf("START : restart program\n");
+    log_printf("SELECT: emergency stop\n");
+    log_printf("START : record program\n");
     log_printf("START+SELECT: PS2 main menu\n");
 }
 
 static void enter_password_screen(void)
 {
+    relays_all_off();
+    drive_inhibited = 1;
     ui_state = UI_PASSWORD;
     password_pos = 0;
     password_failed = 0;
@@ -857,9 +883,13 @@ static void handle_settings_input(u32 pressed_buttons)
         } else if (selected_setting == 2) {
             settings.pid = (settings.pid - 1) & 0xffff;
         } else if (selected_setting == 3) {
-            settings.auto_load_usb = !settings.auto_load_usb;
-        } else if (selected_setting == 4) {
             settings.dead_time_ms -= DEAD_TIME_STEP_MS;
+        } else if (selected_setting == 4) {
+            settings.left_group = next_group(settings.left_group, settings.right_group, -1);
+        } else if (selected_setting == 5) {
+            settings.right_group = next_group(settings.right_group, settings.left_group, -1);
+        } else if (selected_setting == 6) {
+            settings.language = !settings.language;
         }
 
         apply_settings();
@@ -878,9 +908,13 @@ static void handle_settings_input(u32 pressed_buttons)
         } else if (selected_setting == 2) {
             settings.pid = (settings.pid + 1) & 0xffff;
         } else if (selected_setting == 3) {
-            settings.auto_load_usb = !settings.auto_load_usb;
-        } else if (selected_setting == 4) {
             settings.dead_time_ms += DEAD_TIME_STEP_MS;
+        } else if (selected_setting == 4) {
+            settings.left_group = next_group(settings.left_group, settings.right_group, 1);
+        } else if (selected_setting == 5) {
+            settings.right_group = next_group(settings.right_group, settings.left_group, 1);
+        } else if (selected_setting == 6) {
+            settings.language = !settings.language;
         }
 
         apply_settings();
@@ -983,6 +1017,8 @@ static int relay_set(int relay, int enabled)
     result = relay_send_command(command);
     if (result == SEDA_RELAY_OK) {
         relay_state[relay] = enabled ? 1 : 0;
+    } else {
+        relay_fault = 1;
     }
     show_relay_event(relay, enabled, command);
     return result;
@@ -1013,7 +1049,29 @@ static int relays_all_off(void)
     if (was_on) {
         dead_time_pending = 1;
     }
+    relay_fault = !all_ok;
     return all_ok ? SEDA_RELAY_OK : SEDA_RELAY_ERR_USB;
+}
+
+/* The documented SPDT wiring brakes each motor when BOTH terminals are on +.
+   This single startup check intentionally energises every pair, outside the
+   normal direction interlock. No unverified broadcast HID commands are used. */
+static void startup_relay_check(void)
+{
+    int i, success = 1;
+    if (startup_test_state != 0 || relay_get_status() != SEDA_RELAY_STATUS_READY) return;
+    if (relays_all_off() != SEDA_RELAY_OK) {
+        startup_test_state = -1; drive_inhibited = 1; return;
+    }
+    for (i = 0; i < RELAY_COUNT; i++) {
+        if (relay_send_command(relay_on_command[i]) != SEDA_RELAY_OK) { success = 0; break; }
+        relay_state[i] = 1;
+    }
+    if (success) DelayThread(STARTUP_PULSE_MS * 1000);
+    if (relays_all_off() != SEDA_RELAY_OK) success = 0;
+    startup_test_state = success ? 1 : -1;
+    drive_inhibited = 1;
+    show_idle_screen(success ? "Startup relay check complete" : "Startup relay check failed; drive blocked");
 }
 
 /* Blocks for the configured dead time if relays were just switched off.
@@ -1039,10 +1097,9 @@ static void apply_motor_relays(int motor_a_fwd, int motor_a_rev, int motor_b_fwd
     int off_failed = 0;
     int i;
 
-    desired[0] = motor_a_fwd && !motor_a_rev;
-    desired[1] = motor_a_rev && !motor_a_fwd;
-    desired[2] = motor_b_fwd && !motor_b_rev;
-    desired[3] = motor_b_rev && !motor_b_fwd;
+    if (startup_test_state != 1 || relay_fault) return;
+    motor_relay_mask(desired, settings.left_group, settings.right_group,
+                     motor_a_fwd, motor_a_rev, motor_b_fwd, motor_b_rev);
 
     for (i = 0; i < RELAY_COUNT; i++) {
         if (relay_state[i] && !desired[i]) {
@@ -1055,6 +1112,8 @@ static void apply_motor_relays(int motor_a_fwd, int motor_a_rev, int motor_b_fwd
 
     /* Never energise an opposite direction while an OFF command is unconfirmed. */
     if (off_failed) {
+        relays_all_off();
+        drive_inhibited = 1;
         return;
     }
 
@@ -1071,7 +1130,7 @@ static void apply_motor_relays(int motor_a_fwd, int motor_a_rev, int motor_b_fwd
         if (!relay_state[i] && desired[i]) {
             /* Wait once, only when a relay really has to be energised. */
             relay_dead_time_wait();
-            relay_set(i, 1);
+            if (relay_set(i, 1) != SEDA_RELAY_OK) { relays_all_off(); drive_inhibited = 1; return; }
         }
     }
 
@@ -1210,7 +1269,7 @@ static void show_program_screen(const char *message)
     log_printf("PROGRAM MODE - motors are OFF\n");
     log_printf("-----------------------------\n");
     if (message) {
-        log_printf("%s\n\n", message);
+        log_printf("%s\n\n", ui_translate(message, settings.language));
     }
     log_printf("Recorded steps: %d / %d\n", program_step_count, PROGRAM_MAX_STEPS);
     first = program_step_count > 12 ? program_step_count - 12 : 0;
@@ -1286,6 +1345,10 @@ static void run_program(void)
     int i = 0;
 
     program_recording = 0;
+    if (startup_test_state != 1 || relay_fault) {
+        show_idle_screen("Drive blocked: startup check incomplete");
+        return;
+    }
     if (relays_all_off() != SEDA_RELAY_OK) {
         show_idle_screen("Program blocked: relays could not be confirmed OFF");
         return;
@@ -1418,13 +1481,18 @@ int main(int argc, char *argv[])
         show_idle_screen("Using default settings");
     }
 
-    if (settings.auto_load_usb) {
-        initialize_usb_relay();
-        show_idle_screen("Auto USB load done");
-    }
+    /* The requested power-on check requires USB even with a legacy autoload=0. */
+    initialize_usb_relay();
+    show_idle_screen("Waiting for USB startup check");
 
     while (1) {
         int state = padGetState(PAD_PORT, PAD_SLOT);
+        static int startup_poll = 0;
+        DelayThread(10000);
+        if (startup_test_state == 0 && ui_state == UI_NORMAL && !program_recording && ++startup_poll >= 25) {
+            startup_poll = 0;
+            startup_relay_check();
+        }
 
         if (state != PAD_STATE_STABLE && state != PAD_STATE_FINDCTP1) {
             if (!disconnected) {
@@ -1506,7 +1574,9 @@ int main(int argc, char *argv[])
         }
 
         if (pressed_buttons & PAD_SELECT) {
-            cls();
+            relays_all_off();
+            drive_inhibited = 1;
+            show_idle_screen("Emergency stop; release movement buttons");
             previous_buttons = current_buttons;
             continue;
         }
@@ -1549,6 +1619,9 @@ int main(int argc, char *argv[])
                 log_printf("USB relay status: %d\n", relay_get_status());
             }
 
+            if (startup_test_state < 0 && relays_all_off() == SEDA_RELAY_OK) startup_test_state = 0;
+            startup_relay_check();
+
             log_printf("\nPress relay buttons to test\n");
             previous_buttons = current_buttons;
             continue;
@@ -1565,7 +1638,11 @@ int main(int argc, char *argv[])
             int motor_b_fwd_src = cross || square;
             int motor_b_rev_src = triangle || circle;
 
-            apply_motor_relays(motor_a_fwd_src, motor_a_rev_src, motor_b_fwd_src, motor_b_rev_src);
+            if (drive_inhibited) {
+                if (!(cross || square || triangle || circle)) drive_inhibited = 0;
+            } else {
+                apply_motor_relays(motor_a_fwd_src, motor_a_rev_src, motor_b_fwd_src, motor_b_rev_src);
+            }
         }
 
         previous_buttons = current_buttons;

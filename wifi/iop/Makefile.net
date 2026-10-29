@@ -1,0 +1,15 @@
+IOP_BIN = rtl8192cu_net.irx
+IOP_OBJS = rtl_net.o rtl_core.o rtl_net_packet.o imports.o
+IOP_OBJS_DIR = obj-net/
+IOP_INCS = -I../include
+all: $(IOP_BIN)
+obj-net/rtl_net.o: rtl_probe.c rtl_net_impl.h ../include/rtl_rpc.h ../include/rtl_core.h ../include/rtl_net_packet.h
+obj-net/imports.o: imports.lst irx_imports.h
+obj-net/rtl_core.o: ../src/rtl_core.c ../include/rtl_core.h
+	$(DIR_GUARD)
+	$(IOP_CC) $(IOP_CFLAGS) -c $< -o $@
+obj-net/rtl_net_packet.o: ../src/rtl_net_packet.c ../include/rtl_net_packet.h
+	$(DIR_GUARD)
+	$(IOP_CC) $(IOP_CFLAGS) -c $< -o $@
+include $(PS2SDK)/samples/Makefile.pref
+include $(PS2SDK)/samples/Makefile.iopglobal

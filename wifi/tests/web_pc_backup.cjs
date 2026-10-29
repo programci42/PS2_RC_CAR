@@ -1,0 +1,9 @@
+// Execute the actual upload UI script with deterministic fetch/download stubs.
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const source=[...fs.readFileSync('web/controls.html','utf8').matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).find(s=>s.includes("$('#upload-start').onclick"));
+async function run(status){let events=[],nodes={},old=Buffer.from('old ELF bytes'),body=Buffer.from('new ELF bytes');const node=s=>nodes[s]||(nodes[s]={value:'mc0:/Wifi/WIFI.ELF',files:[{size:body.length,slice:(a,b)=>({arrayBuffer:async()=>Uint8Array.from(body.subarray(a,b)).buffer})}]});
+ const context={Uint8Array,Blob,AbortController,URL,setTimeout:()=>1,clearTimeout:()=>{},Event:function(){},window:{ps2ShowTransfer:()=>{}},document:{querySelector:node,querySelectorAll:()=>[],dispatchEvent:()=>{},createElement:()=>({click:()=>events.push('download-click')})},fetch:async(url,options)=>{events.push(url);if(!options)return{ok:status===200,status,arrayBuffer:async()=>Uint8Array.from(old).buffer};return{ok:true,status:200,text:async()=>''};}};
+ vm.runInNewContext(source,context);await node('#upload-start').onclick();return{events,nodes,old};}
+(async()=>{let r=await run(200),begin=r.events.findIndex(x=>x.startsWith('/files/upload/begin'));assert(begin>r.events.indexOf('download-click'));const commit=r.events.find(x=>x.startsWith('/files/upload/commit'));let crc=0xffffffff;for(const b of r.old){crc^=b;for(let i=0;i<8;i++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}assert(commit.includes('&pcbackup='+((crc^0xffffffff)>>>0).toString(16).padStart(8,'0')));
+ r=await run(500);assert(!r.events.some(x=>x.startsWith('/files/upload/')));r=await run(404);assert(!r.events.includes('download-click')&&r.events.some(x=>x.startsWith('/files/upload/commit')));console.log('WEB_PC_BACKUP_TEST PASS actual UI: download-before-upload, CRC proof, backup failure blocks writes, new-file upload');
+})().catch(e=>{console.error(e);process.exitCode=1});

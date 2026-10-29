@@ -1,0 +1,5 @@
+// Upload source only. Compilation and execution both happen on the PS2.
+const fs=require('fs');const args=process.argv.slice(2),file=args[args.indexOf('--file')+1];if(!args.includes('--file'))throw Error('node tools/ps2-exec.cjs --file examples/job.cpp');
+const host=args.includes('--host')?args[args.indexOf('--host')+1]:'http://192.168.1.43';
+async function req(p,b){let r=await fetch(new URL(p,host),{method:b===undefined?'GET':'POST',headers:b===undefined?{}:{'X-PS2-Exec':'1','Content-Type':'text/plain; charset=utf-8'},body:b,signal:AbortSignal.timeout(15000)}),s=await r.text();if(!r.ok)throw Error(r.status+' '+s);return JSON.parse(s)}
+(async()=>{let source=fs.readFileSync(file);if(source.length>3072)throw Error('Source exceeds 3072 bytes');let lang=/\.(s|asm)$/i.test(file)?'asm':'cpp';await req('/exec/source?lang='+lang,source);for(let i=0;i<40;i++){let result=await req('/exec/status');if(result.state!==2){console.log(JSON.stringify(result,null,2));if(result.state!==3)process.exitCode=1;return;}await new Promise(r=>setTimeout(r,150))}throw Error('No job result')})().catch(e=>{console.error(e.message);process.exitCode=1});

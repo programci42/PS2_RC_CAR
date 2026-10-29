@@ -1,0 +1,350 @@
+diff --git a/Source/CMakeLists.txt b/Source/CMakeLists.txt
+index 78fcc50..1831a77 100644
+--- a/Source/CMakeLists.txt
++++ b/Source/CMakeLists.txt
+@@ -431,6 +431,8 @@ set(COMMON_SRC_FILES
+ 	iop/UsbDevice.h
+ 	iop/UsbBuzzerDevice.cpp
+ 	iop/UsbBuzzerDevice.h
++	iop/UsbRtl8192CuDevice.cpp
++	iop/UsbRtl8192CuDevice.h
+ 	ISO9660/BlockProvider.h
+ 	ISO9660/DirectoryRecord.cpp
+ 	ISO9660/DirectoryRecord.h
+diff --git a/Source/FpUtils.cpp b/Source/FpUtils.cpp
+index 5e4ab48..7d33a24 100644
+--- a/Source/FpUtils.cpp
++++ b/Source/FpUtils.cpp
+@@ -1,4 +1,5 @@
+ #include "FpUtils.h"
++#include <float.h>
+ #include "MipsJitter.h"
+ 
+ #ifdef _WIN32
+diff --git a/Source/VolumeStream.cpp b/Source/VolumeStream.cpp
+index 23f91df..d797dca 100644
+--- a/Source/VolumeStream.cpp
++++ b/Source/VolumeStream.cpp
+@@ -1,103 +1,105 @@
+-#include <exception>
+-#include "tcharx.h"
+-#include "VolumeStream.h"
+-
+-using namespace Framework;
+-using namespace Framework::Win32;
+-
+-CVolumeStream::CVolumeStream(const TCHAR* volumePath)
+-{
+-	//We need to remove any trailing slashes to open volumes
+-	auto fixedVolumePath = std::tstring(volumePath);
+-	if(!fixedVolumePath.empty() && (*fixedVolumePath.rbegin() == '\\'))
+-	{
+-		fixedVolumePath = std::tstring(fixedVolumePath.begin(), fixedVolumePath.end() - 1);
+-	}
+-
+-	m_nVolume = CreateFile(fixedVolumePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+-	assert(m_nVolume != INVALID_HANDLE_VALUE);
+-	if(m_nVolume == INVALID_HANDLE_VALUE)
+-	{
+-		throw std::runtime_error("Failed to open volume.");
+-	}
+-
+-	m_nPosition = 0;
+-
+-	m_nSectorSize = 0x800;
+-	m_nCacheSector = m_nSectorSize - 1;
+-	m_pCache = VirtualAlloc(NULL, (SIZE_T)m_nSectorSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+-}
+-
+-CVolumeStream::~CVolumeStream()
+-{
+-	VirtualFree(m_pCache, 0, MEM_RELEASE);
+-	CloseHandle(m_nVolume);
+-}
+-
+-void CVolumeStream::Seek(int64 nDistance, STREAM_SEEK_DIRECTION nFrom)
+-{
+-	switch(nFrom)
+-	{
+-	case STREAM_SEEK_SET:
+-		m_nPosition = nDistance;
+-		break;
+-	case STREAM_SEEK_CUR:
+-		m_nPosition += nDistance;
+-		break;
+-	case STREAM_SEEK_END:
+-		throw std::exception("Operation not supported.");
+-		break;
+-	}
+-}
+-
+-uint64 CVolumeStream::Tell()
+-{
+-	return m_nPosition;
+-}
+-
+-uint64 CVolumeStream::Read(void* pBuffer, uint64 nSize)
+-{
+-	auto pSrc = reinterpret_cast<uint8*>(m_pCache);
+-	auto pDst = reinterpret_cast<uint8*>(pBuffer);
+-	uint64 nRetSize = nSize;
+-
+-	while(nSize != 0)
+-	{
+-		SyncCache();
+-
+-		uint64 nSectorOffset = (m_nPosition & (m_nSectorSize - 1));
+-		uint64 nSectorRemain = (m_nSectorSize - nSectorOffset);
+-		uint64 nCopy = min(nSize, nSectorRemain);
+-
+-		memcpy(pDst, pSrc + nSectorOffset, nCopy);
+-
+-		m_nPosition += nCopy;
+-		nSize -= nCopy;
+-		pDst += nCopy;
+-	}
+-
+-	return nRetSize;
+-}
+-
+-uint64 CVolumeStream::Write(const void* pBuffer, uint64 nSize)
+-{
+-	throw std::exception("Operation not-supported.");
+-}
+-
+-bool CVolumeStream::IsEOF()
+-{
+-	return false;
+-}
+-
+-void CVolumeStream::SyncCache()
+-{
+-	uint64 nSectorPosition = m_nPosition & ~(m_nSectorSize - 1);
+-	if(nSectorPosition == m_nCacheSector) return;
+-	m_nCacheSector = nSectorPosition;
+-
+-	SetFilePointer(m_nVolume, (uint32)nSectorPosition, (PLONG)((uint32*)&nSectorPosition) + 1, FILE_BEGIN);
+-
+-	DWORD nRead = 0;
+-	BOOL success = ReadFile(m_nVolume, m_pCache, (DWORD)m_nSectorSize, &nRead, NULL);
+-	assert(success);
+-}
++#include <stdexcept>
++#include <algorithm>
++#include <exception>
++#include "tcharx.h"
++#include "VolumeStream.h"
++
++using namespace Framework;
++using namespace Framework::Win32;
++
++CVolumeStream::CVolumeStream(const TCHAR* volumePath)
++{
++	//We need to remove any trailing slashes to open volumes
++	auto fixedVolumePath = std::tstring(volumePath);
++	if(!fixedVolumePath.empty() && (*fixedVolumePath.rbegin() == '\\'))
++	{
++		fixedVolumePath = std::tstring(fixedVolumePath.begin(), fixedVolumePath.end() - 1);
++	}
++
++	m_nVolume = CreateFile(fixedVolumePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
++	assert(m_nVolume != INVALID_HANDLE_VALUE);
++	if(m_nVolume == INVALID_HANDLE_VALUE)
++	{
++		throw std::runtime_error("Failed to open volume.");
++	}
++
++	m_nPosition = 0;
++
++	m_nSectorSize = 0x800;
++	m_nCacheSector = m_nSectorSize - 1;
++	m_pCache = VirtualAlloc(NULL, (SIZE_T)m_nSectorSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
++}
++
++CVolumeStream::~CVolumeStream()
++{
++	VirtualFree(m_pCache, 0, MEM_RELEASE);
++	CloseHandle(m_nVolume);
++}
++
++void CVolumeStream::Seek(int64 nDistance, STREAM_SEEK_DIRECTION nFrom)
++{
++	switch(nFrom)
++	{
++	case STREAM_SEEK_SET:
++		m_nPosition = nDistance;
++		break;
++	case STREAM_SEEK_CUR:
++		m_nPosition += nDistance;
++		break;
++	case STREAM_SEEK_END:
++		throw std::runtime_error("Operation not supported.");
++		break;
++	}
++}
++
++uint64 CVolumeStream::Tell()
++{
++	return m_nPosition;
++}
++
++uint64 CVolumeStream::Read(void* pBuffer, uint64 nSize)
++{
++	auto pSrc = reinterpret_cast<uint8*>(m_pCache);
++	auto pDst = reinterpret_cast<uint8*>(pBuffer);
++	uint64 nRetSize = nSize;
++
++	while(nSize != 0)
++	{
++		SyncCache();
++
++		uint64 nSectorOffset = (m_nPosition & (m_nSectorSize - 1));
++		uint64 nSectorRemain = (m_nSectorSize - nSectorOffset);
++		uint64 nCopy = std::min(nSize, nSectorRemain);
++
++		memcpy(pDst, pSrc + nSectorOffset, nCopy);
++
++		m_nPosition += nCopy;
++		nSize -= nCopy;
++		pDst += nCopy;
++	}
++
++	return nRetSize;
++}
++
++uint64 CVolumeStream::Write(const void* pBuffer, uint64 nSize)
++{
++	throw std::runtime_error("Operation not-supported.");
++}
++
++bool CVolumeStream::IsEOF()
++{
++	return false;
++}
++
++void CVolumeStream::SyncCache()
++{
++	uint64 nSectorPosition = m_nPosition & ~(m_nSectorSize - 1);
++	if(nSectorPosition == m_nCacheSector) return;
++	m_nCacheSector = nSectorPosition;
++
++	SetFilePointer(m_nVolume, (uint32)nSectorPosition, (PLONG)((uint32*)&nSectorPosition) + 1, FILE_BEGIN);
++
++	DWORD nRead = 0;
++	BOOL success = ReadFile(m_nVolume, m_pCache, (DWORD)m_nSectorSize, &nRead, NULL);
++	assert(success);
++}
+diff --git a/Source/iop/Iop_Usbd.cpp b/Source/iop/Iop_Usbd.cpp
+index cd14a15..e17ebbf 100644
+--- a/Source/iop/Iop_Usbd.cpp
++++ b/Source/iop/Iop_Usbd.cpp
+@@ -5,6 +5,8 @@
+ #include "string_format.h"
+ #include "lexical_cast_ex.h"
+ #include "UsbBuzzerDevice.h"
++#include "UsbRtl8192CuDevice.h"
++#include <cstdlib>
+ #include "states/RegisterStateCollectionFile.h"
+ 
+ using namespace Iop;
+@@ -24,6 +26,8 @@ CUsbd::CUsbd(CIopBios& bios, uint8* ram)
+     , m_ram(ram)
+ {
+ 	RegisterDevice(std::make_unique<CBuzzerUsbDevice>(bios, ram));
++	if(auto enabled=std::getenv("PLAY_RTL8192CU");enabled&&std::string(enabled)=="1")
++		RegisterDevice(std::make_unique<CRtl8192CuUsbDevice>(bios,ram));
+ }
+ 
+ std::string CUsbd::GetId() const
+@@ -41,8 +45,12 @@ std::string CUsbd::GetFunctionName(unsigned int functionId) const
+ 		return FUNCTION_SCANSTATICDESCRIPTOR;
+ 	case 9:
+ 		return FUNCTION_OPENPIPE;
++	case 12:
++		return "OpenPipeAligned";
+ 	case 11:
+ 		return FUNCTION_TRANSFERPIPE;
++	case 10:
++		return "ClosePipe";
+ 	case 13:
+ 		return FUNCTION_GETDEVICELOCATION;
+ 	default:
+@@ -54,6 +62,9 @@ void CUsbd::Invoke(CMIPS& context, unsigned int functionId)
+ {
+ 	switch(functionId)
+ 	{
++	case 10:
++		context.m_State.nGPR[CMIPS::V0].nD0=0;
++		break;
+ 	case 4:
+ 		context.m_State.nGPR[CMIPS::V0].nD0 = RegisterLld(
+ 		    context.m_State.nGPR[CMIPS::A0].nV0);
+@@ -69,6 +80,11 @@ void CUsbd::Invoke(CMIPS& context, unsigned int functionId)
+ 		    context.m_State.nGPR[CMIPS::A0].nV0,
+ 		    context.m_State.nGPR[CMIPS::A1].nV0);
+ 		break;
++	case 12:
++		context.m_State.nGPR[CMIPS::V0].nD0 = OpenPipe(
++		    context.m_State.nGPR[CMIPS::A0].nV0,
++		    context.m_State.nGPR[CMIPS::A1].nV0, true);
++		break;
+ 	case 11:
+ 		context.m_State.nGPR[CMIPS::V0].nD0 = TransferPipe(
+ 		    context.m_State.nGPR[CMIPS::A0].nV0,
+@@ -175,7 +191,7 @@ int32 CUsbd::ScanStaticDescriptor(uint32 deviceId, uint32 descriptorPtr, uint32
+ 	}
+ }
+ 
+-int32 CUsbd::OpenPipe(uint32 deviceId, uint32 descriptorPtr)
++int32 CUsbd::OpenPipe(uint32 deviceId, uint32 descriptorPtr, bool aligned)
+ {
+ 	CLog::GetInstance().Print(LOG_NAME, FUNCTION_OPENPIPE "(deviceId = 0x%08X, descriptorPtr = 0x%08X);\r\n",
+ 	                          deviceId, descriptorPtr);
+@@ -186,7 +202,10 @@ int32 CUsbd::OpenPipe(uint32 deviceId, uint32 descriptorPtr)
+ 		auto& device = deviceIteratorPair->second;
+ 		uint16 pipeId = device->OpenPipe(deviceId, descriptorPtr);
+ 		assert(pipeId < 0x8000);
+-		return (static_cast<uint32>(pipeId) << 16) | deviceId;
++		auto fullPipe=(static_cast<uint32>(pipeId) << 16) | deviceId;
++		if(deviceId==CRtl8192CuUsbDevice::DEVICE_ID&&descriptorPtr&&m_ram[descriptorPtr+1]==5&&
++		   (m_ram[descriptorPtr+3]&3)==2&&!(m_ram[descriptorPtr+2]&0x80))m_bulkOutAligned[fullPipe]=aligned;
++		return fullPipe;
+ 	}
+ 	else
+ 	{
+@@ -205,6 +224,14 @@ int32 CUsbd::TransferPipe(uint32 pipeId, uint32 bufferPtr, uint32 size, uint32 o
+ 	if(deviceIteratorPair != std::end(m_devices))
+ 	{
+ 		auto& device = deviceIteratorPair->second;
++		const auto alignment=m_bulkOutAligned.find(pipeId);
++		if(alignment!=m_bulkOutAligned.end()&&!alignment->second&&size>62)
++		{
++			// Fail fast rather than falsely validating a legacy pipe that
++			// PS2SDK limits to 62-byte USB OUT packets on real OHCI hardware.
++			CLog::GetInstance().Warn(LOG_NAME,"RTL bulk OUT requires OpenPipeAligned for transfers longer than 62 bytes.\r\n");
++			return -1;
++		}
+ 		return device->TransferPipe(pipeId, bufferPtr, size, optionPtr, doneCb, arg);
+ 	}
+ 	else
+diff --git a/Source/iop/Iop_Usbd.h b/Source/iop/Iop_Usbd.h
+index 3892c48..ed51010 100644
+--- a/Source/iop/Iop_Usbd.h
++++ b/Source/iop/Iop_Usbd.h
+@@ -53,7 +53,7 @@ namespace Iop
+ 
+ 		int32 RegisterLld(uint32);
+ 		int32 ScanStaticDescriptor(uint32, uint32, uint32);
+-		int32 OpenPipe(uint32, uint32);
++        int32 OpenPipe(uint32, uint32, bool aligned = false);
+ 		int32 TransferPipe(uint32, uint32, uint32, uint32, uint32, uint32);
+ 		int32 GetDeviceLocation(uint32, uint32);
+ 
+@@ -61,6 +61,7 @@ namespace Iop
+ 		uint8* m_ram = nullptr;
+ 		std::unordered_map<uint16, UsbDevicePtr> m_devices;
+ 		std::vector<uint16> m_activeDeviceIds;
++        std::unordered_map<uint32, bool> m_bulkOutAligned;
+ 	};
+ 
+ 	typedef std::shared_ptr<CUsbd> UsbdPtr;

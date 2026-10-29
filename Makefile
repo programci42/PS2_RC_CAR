@@ -7,7 +7,9 @@ SEDA_IRX = iop/seda_relay.irx
 
 all: $(EE_BIN)
 
-iop/seda_relay.irx:
+main.o: relay_policy.h ui_locale.h seda_relay_rpc.h
+
+iop/seda_relay.irx: iop/seda_relay_irx.c iop/imports.lst seda_relay_rpc.h
 	$(MAKE) -C iop
 
 usbd_irx.c: $(USBD_IRX)

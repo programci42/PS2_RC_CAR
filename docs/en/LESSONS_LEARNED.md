@@ -6,7 +6,7 @@ This file records the failures that shaped the working PS2 robot vehicle so they
 
 The PS2 Slim and relay board appeared to work over thin wire while the motors were disconnected. Once the RS-540 motors were connected, their start-up current caused a large voltage drop. The cable insulation began to melt and the PS2 reset immediately. The working correction was thicker, correctly sized cable with firm joints. The final design also calls for branch fusing and keeping motor-current paths short. A motor that starts is a much harder load than an idle relay board.
 
-The 11.1 V 3S LiPo is divided into two branches. Branch 1 passes through an XL4015 buck converter adjusted to 8.50 V for the externally powered PS2 Slim SCPH-70004. Branch 2 remains at battery voltage and feeds NC1–NC4 from battery negative and NO1–NO4 from battery positive. COM1 and COM2 feed the parallel left motors; COM3 and COM4 feed the parallel right motors. The relay board uses both PS2 USB ports: one cable for 5 V power and one for HID data.
+The 11.1 V 3S LiPo is divided into two branches. Branch 1 passes through an XL4016 buck converter adjusted to 8.50 V for the externally powered PS2 Slim SCPH-70004. Branch 2 remains at battery voltage and feeds NC1–NC4 from battery negative and NO1–NO4 from battery positive. COM1 and COM2 feed the parallel left motors; COM3 and COM4 feed the parallel right motors. The relay board uses both PS2 USB ports: one cable for 5 V power and one for HID data.
 
 ## Direction conflicts and relay contact stress
 

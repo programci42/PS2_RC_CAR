@@ -6,7 +6,7 @@ Bu dosya çalışan PS2 robot aracını ortaya çıkaran sorunları ve çözüml
 
 Motorlar bağlı değilken PS2 Slim ve röle kartı ince kabloyla çalışıyor görünüyordu. RS-540 motorlar bağlanınca ilk kalkış akımı büyük gerilim düşümüne yol açtı; kablonun dış plastiği erimeye başladı ve PS2 anında reset attı. Çalışan çözüm daha kalın, akıma uygun kablo ve sağlam ekler oldu. Son tasarım ayrıca hat sigortası ve kısa motor akım yolları gerektiriyor. Boş röle yükü ile motorun kalkış yükü aynı değildir.
 
-11,1 V 3S LiPo iki hatta ayrılır. 1. hat XL4015 buck dönüştürücüden geçip 8,50 V olarak harici adaptör girişli PS2 Slim SCPH-70004 modeline gider. 2. hat batarya geriliminde kalır: NC1–NC4 batarya eksiye, NO1–NO4 batarya artıya bağlanır. COM1 ve COM2 paralel sol motorları, COM3 ve COM4 paralel sağ motorları besler. Röle kartının 5 V güç ve HID veri kabloları PS2’nin iki USB portunu kullanır.
+11,1 V 3S LiPo iki hatta ayrılır. 1. hat XL4016 buck dönüştürücüden geçip 8,50 V olarak harici adaptör girişli PS2 Slim SCPH-70004 modeline gider. 2. hat batarya geriliminde kalır: NC1–NC4 batarya eksiye, NO1–NO4 batarya artıya bağlanır. COM1 ve COM2 paralel sol motorları, COM3 ve COM4 paralel sağ motorları besler. Röle kartının 5 V güç ve HID veri kabloları PS2’nin iki USB portunu kullanır.
 
 ## Zıt yön komutları ve röle kontakları
 

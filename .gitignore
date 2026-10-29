@@ -13,6 +13,7 @@ pcsx2-*.log
 *.bak
 *.bak-*
 *~
+tests/ui-tour/
 # Windows tester build outputs
 windows-test/bin/
 windows-test/obj/
@@ -22,3 +23,27 @@ Thumbs.db
 .vs/
 # Office lock files
 ~$*
+# Integrated Wi-Fi build and private runtime state
+wifi/reports/
+wifi/dist/
+wifi/Backups/
+wifi/emulator-bin/
+wifi/build-*/
+wifi/iop/obj*/
+wifi/third_party/ps2sdk-usbd/obj/
+wifi/third_party/ps2sdk-usbd/*.irx
+wifi/*_irx.c
+wifi/*.elf
+wifi/**/*.o
+wifi/**/*.exe
+wifi/**/*.dll
+wifi/**/*.log
+wifi/Release/*.seed
+**/SEED.DAT
+**/bilinenaglar.csv
+**/ayarlar.json
+wifi/Release/RTL_WIFI/
+node_modules/
+wifi/**/*.elf
+!wifi/Release/Wifi.elf
+wifi/**/*.map

@@ -1,0 +1,8 @@
+{
+  "upstream": "https://github.com/jpd002/Play-",
+  "revision": "0bd77c19fbbdb83e98988fc5b7944dbeee9eee3e",
+  "submodules": {
+    "Framework": "2fb527e71f5c86bb982bf2c627f328d83397a02a",
+    "Dependencies": "cfb65c6dc2648ca3ef0a947053b1d55f7133f0a6"
+  }
+}
