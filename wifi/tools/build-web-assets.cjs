@@ -6,8 +6,9 @@ for(const [file,header,macro,limit] of [['controls','robot_web_asset.h','ROBOT_W
  fs.writeFileSync('include/'+header,'/* Generated from web/'+file+'.html. */\n#define '+macro+' '+JSON.stringify(html)+'\n');
  console.log(file,Buffer.byteLength(html),'bytes');
 }
+const relayJs=fs.readFileSync('web/relay-test.js','utf8');new Function(relayJs);fs.writeFileSync('include/relay_test_asset.h','/* Generated from web/relay-test.js. */\n#define RELAY_TEST_ASSET '+JSON.stringify(relayJs)+'\n');
 const all=JSON.parse(fs.readFileSync('web/translations.json','utf8'));
-const pages=fs.readFileSync('web/controls.html','utf8')+fs.readFileSync('web/tools.html','utf8')+fs.readFileSync('src/rtl_http.c','utf8');
+const pages=relayJs+fs.readFileSync('web/controls.html','utf8')+fs.readFileSync('web/tools.html','utf8')+fs.readFileSync('src/rtl_http.c','utf8');
 const dictionary=Object.fromEntries(Object.entries(all).filter(([en])=>en.length>1&&(pages.includes(en)||['Language saved.','Ready','Uploading','Completed','Timed out','Cancelled','Error','Compile error','Compiling / running','Relay ',' On',' Off','Stopped','Gamepad','Web','Left: R','Right: R',' · Control: '].includes(en))));
 const js='const PS2_TRANSLATIONS='+JSON.stringify(dictionary)+';\n'+fs.readFileSync('web/i18n-runtime.js','utf8');new Function(js);
 if(Buffer.byteLength(js)>27000)throw Error('i18n asset exceeds response budget');

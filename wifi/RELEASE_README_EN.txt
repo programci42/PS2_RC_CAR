@@ -1,4 +1,4 @@
-PS2 Wi-Fi Robot — Turkish / English release 0.4.32
+PS2 Wi-Fi Robot — Turkish / English release 0.4.33
 
 Turkce varsayilandir. Web panelinde AYARLAR > Dil ile Turkce / English secin.
 Secim ELF klasorundeki dil.json dosyasina kaydedilir; TV ve web ayni dili kullanir.
@@ -43,10 +43,12 @@ movement. After a USB fault, release the controls before resuming. A failed USB
 OFF is not treated as confirmed OFF; the IOP retries stopping independently.
 Software cannot detect welded relay contacts or repair damaged hardware.
 
-0.4.32 retries failed hub status monitoring with bounded backoff, re-enumerates
+0.4.33 retries failed hub status monitoring with bounded backoff, re-enumerates
 a connected disabled child port and removes the three-attempt relay recovery
 limit. These are recovery fixes, not proof that an unpowered hub can supply the
 relay board reliably. Physical hub/motor-load validation is still required.
 
 See the repository README, architecture, API and validation documents for the
 hardware compatibility limits, source credits and known limitations.
+
+Relay Test: individual R1-R8 toggles with acknowledged USB state, opposite-pair interlock, gamepad priority and expiring web lease. Green is not contact feedback. USB failure can prevent OFF reaching the board.

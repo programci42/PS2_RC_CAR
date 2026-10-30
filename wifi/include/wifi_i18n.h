@@ -253,7 +253,7 @@ static inline const char*wifi_tr(const char*s){static const struct{const char*en
 {"HTTP file I/O error.","HTTP dosya islemi I/O hatasi."},
 {"Not enough memory for file service.","Dosya servisi icin bellek yetersiz."},
 {"Command accepted.","Komut kabul edildi."},
-{"Relay board not ready.","Role karti hazir degil."},
+{"Relay board not ready.","Röle kartı hazır değil."},
 {"Gamepad has priority or command is stale.","Gamepad oncelikli veya eski komut."},
 {"Invalid control request.","Gecersiz kontrol istegi."},
 {"Page not found","Sayfa bulunamadi"},
@@ -527,7 +527,14 @@ static inline const char*wifi_tr(const char*s){static const struct{const char*en
 {"Resetting relay outputs","Role cikislari kapatiliyor"},
 {"Relay USB/configuration error","Role USB/yapilandirma hatasi"},
 {"Save language","Dili kaydet"},
-{"C++ / MIPS assembly","C++ / MIPS assembly"}
+{"C++ / MIPS assembly","C++ / MIPS assembly"},
+{"Relay Test","Röle Test"},
+{"All OFF","Tümünü Kapat"},
+{"Disconnect motor power before testing. Opposite relay pairs cannot be ON together.","Testten önce motor beslemesini ayırın. Ters röle çiftleri birlikte açılamaz."},
+{"USB command acknowledged; contacts are not measured.","USB komutu onaylandı; fiziksel kontaklar ölçülmüyor."},
+{"Outputs uncertain. Disconnect motor power.","Çıkışlar belirsiz. Motor beslemesini ayırın."},
+{"Cannot read relay status.","Röle durumu okunamıyor."},
+{"Connection lost; relay OFF is not confirmed.","Bağlantı kesildi; rölelerin kapandığı doğrulanamadı."}
 };unsigned i;if(!wifi_language)for(i=0;i<sizeof(t)/sizeof(t[0]);i++)if(!strcmp(s,t[i].en))return t[i].tr;return s;}
 #define WIFI_TR(s) wifi_tr(s)
 #endif

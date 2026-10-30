@@ -5,6 +5,7 @@
 #include "rtl_http.h"
 #include "wifi_version.h"
 #include "robot_web_asset.h"
+#include "relay_test_asset.h"
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -41,6 +42,7 @@ static void page(RtlHttp*h,RtlHttpClient*c,uint32_t now){
      if(s&&e){unsigned m=s-c->request,n=e-s-1;const char*q=memchr(s+1,'?',n);if(q)n=q-s-1;if(m>7)m=7;if(n>26)n=26;snprintf(h->last_request,sizeof(h->last_request),"HTTP %u.%u.%u.%u %.*s %.*s",c->ip[0],c->ip[1],c->ip[2],c->ip[3],m,c->request,n,s+1);}
     }
     if(!strncmp(c->request,"GET /i18n.js HTTP/1.",20)){snprintf(body,sizeof(body),"window.ps2Language=\"%s\";\n%s",wifi_language?"en":"tr",WIFI_I18N_ASSET);type="application/javascript; charset=utf-8";goto response;}
+    if(!strncmp(c->request,"GET /relay-test.js HTTP/1.",26)){snprintf(body,sizeof(body),"%s",RELAY_TEST_ASSET);type="application/javascript; charset=utf-8";goto response;}
     if(!strncmp(c->request,"GET /tools HTTP/1.",18)){snprintf(body,sizeof(body),"%s",PS2_TOOLS_ASSET);goto response;}
     if(h->api){char method[8],target[256];const char*s=strchr(c->request,' '),*e=s?strchr(s+1,' '):0,*b=strstr(c->request,"\r\n\r\n");
         if(s&&e&&b&&s-c->request<8&&e-s-1<256){int code;memcpy(method,c->request,s-c->request);method[s-c->request]=0;memcpy(target,s+1,e-s-1);target[e-s-1]=0;body[0]=0;

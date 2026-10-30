@@ -25,9 +25,9 @@ static void verify(const unsigned char*f,unsigned n){unsigned t=n-34;
     H(!ck(f+34,t,u16(f+26)+u16(f+28)+u16(f+30)+u16(f+32)+6+t));
 }
 static void methods(void){
-    const char*request[]={"HEAD / HTTP/1.1\r\n\r\n","GET /missing HTTP/1.1\r\n\r\n","POST / HTTP/1.1\r\n\r\n","GET /status HTTP/1.1\r\n\r\n","POST /drive/forward?s=100 HTTP/1.1\r\nx-ps2-control: 1\r\n\r\n","POST /drive/forward?s=100 HTTP/1.1\r\n\r\n","GET /status HTTP/1.1\r\n\r\n","GET / HTTP/1.1\r\n\r\n","GET /tools HTTP/1.1\r\n\r\n"};
-    const char*status[]={"200 OK","404 Not Found","405 Method Not Allowed","200 OK","200 OK","400 Bad Request","423 Locked","200 OK","200 OK"};unsigned k;
-    for(k=0;k<9;k++){static RtlHttp h;RobotControl robot;unsigned char f[1514],out[1514];static char text[32768];unsigned n,used=0,i;unsigned long server,seq;
+    const char*request[]={"HEAD / HTTP/1.1\r\n\r\n","GET /missing HTTP/1.1\r\n\r\n","POST / HTTP/1.1\r\n\r\n","GET /status HTTP/1.1\r\n\r\n","POST /drive/forward?s=100 HTTP/1.1\r\nx-ps2-control: 1\r\n\r\n","POST /drive/forward?s=100 HTTP/1.1\r\n\r\n","GET /status HTTP/1.1\r\n\r\n","GET / HTTP/1.1\r\n\r\n","GET /tools HTTP/1.1\r\n\r\n","GET /relay-test.js HTTP/1.1\r\n\r\n"};
+    const char*status[]={"200 OK","404 Not Found","405 Method Not Allowed","200 OK","200 OK","400 Bad Request","423 Locked","200 OK","200 OK","200 OK"};unsigned k;
+    for(k=0;k<10;k++){static RtlHttp h;RobotControl robot;unsigned char f[1514],out[1514];static char text[32768];unsigned n,used=0,i;unsigned long server,seq;
         rtl_http_init(&h,mac,ip,1);n=packet(f,100,0,2,0,k==8?1460:512);rtl_http_rx(&h,f,n,0);H(rtl_http_tx(&h,0,out,sizeof(out))==58);H(u16(out+56)==1460);server=u32(out+38)+1;
         robot_init(&robot);robot.ready=1;h.control=robot_web;h.control_context=&robot;
         {static WifiFiles files;memset(&files,0,sizeof(files));h.files=&files;h.file_blocked=1;}
@@ -37,6 +37,7 @@ static void methods(void){
             server=u32(out+38)+len-54+!!(out[47]&1);n=packet(f,seq,server,16,0,0);rtl_http_rx(&h,f,n,3+i*2);if(h.responses)break;}
         H(h.responses==1);text[used]=0;H(strstr(text,status[k]));if(!k){char*end=strstr(text,"\r\n\r\n");H(end&&end[4]==0&&strstr(text,"Content-Length: "));}
         if(k==8)H(strstr(text,"C++ / MIPS assembly"));
+        if(k==9)H(strstr(text,"application/javascript")&&strstr(text,"data-relay")&&strstr(text,"relay OFF is not confirmed"));
         if(k==4)H(robot.web==ROBOT_FORWARD);else H(!robot.web);
         if(k==6){H(h.peer_ip[3]==2&&h.requests==0);}if(k==7){H(h.peer_ip[3]==1&&!h.client[1].state&&h.requests==1);}
     }

@@ -48,5 +48,9 @@ int main(void){unsigned before;robot_usb_init(0);run(0,0,1,1000);U(binds>=2&&rob
   run_program(&p,0x4000,700);U(mask==2);off=off_time[0];U(now-off>=100);run_program(&p,0,300);U(!mask);}
  {RobotProgram p;unsigned k;rp_default(&p,3,1);robot.left=3;robot.right=1;for(k=0;k<4;k++){unsigned expected[]={68,72,132,136};run_program(&p,rp_buttons[k],500);U(mask==expected[k]);run_program(&p,0,100);U(!mask);}
   run_program(&p,0x1000,400);U(mask==136);fail_next=1;run_program(&p,0,10);run_program(&p,0,10);U(robot.output_uncertain&&robot.applied);run_program(&p,0x1000,700);U(!mask);run_program(&p,0,500);run_program(&p,0x1000,500);U(mask==136);run_program(&p,0,100);U(!mask);}
+ run(0,1,1,200);U(!robot_web(&robot,"test64?s=4",now));run(0,1,1,300);U(mask==64);
+ U(!robot_web(&robot,"test128?s=5",now));run(0,1,1,400);U(mask==128);
+ U(!robot_web(&robot,"stop?s=6",now));run(0,1,1,300);U(!mask);
+ U(!robot_web(&robot,"test64?s=7",now));run(0,1,1,300);U(mask==64);run(0,1,1,1300);U(!mask);
  printf("ROBOT_USB_TEST PASS checks=%u actual-EE-scheduler RPC=mock startup-off-break-before-make-pad-web-disconnect-fault-custom-sequence-wait-release all-face-buttons failed-OFF-preserves-mask requires-release\n",checks);return 0;
 }
