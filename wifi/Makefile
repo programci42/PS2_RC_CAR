@@ -220,3 +220,5 @@ include/wifi_i18n.h: web/translations.json tools/build-web-assets.cjs
 include/relay_test_asset.h: web/relay-test.js tools/build-web-assets.cjs
 	node tools/build-web-assets.cjs
 src/rtl_http.o: include/relay_test_asset.h
+
+iop/rtl8192cu_wifi.irx: iop/imports.lst iop/irx_imports.h

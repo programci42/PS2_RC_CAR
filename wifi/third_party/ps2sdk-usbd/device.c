@@ -10,6 +10,20 @@
 
 #include "usbdpriv.h"
 
+/* Last enumeration error per physical root port; retained across retries.
+ * No descriptors or user payload are retained. Stages: 2 address, 3 device,
+ * 4 configuration. Snapshot reads never modify the USB controller. */
+u32 usbdEnumFailures[2];
+void usbdTraceEnumeration(UsbdDevice_t *dev, unsigned stage, unsigned result)
+{
+    unsigned port;
+    if (!result || !dev || !memPool) return;
+    while (dev->m_parent && dev->m_parent != memPool->m_deviceTreeRoot) dev=dev->m_parent;
+    if (dev->m_parent != memPool->m_deviceTreeRoot) return;
+    port=dev->m_attachedToPortNo;
+    if (port>=1 && port<=2) usbdEnumFailures[port-1]=(stage<<24)|((result&255)<<16);
+}
+
 static void fetchNextReportDescriptor(UsbdIoRequest_t *req);
 static void requestDeviceDescriptor(UsbdIoRequest_t *req);
 static void hubSetFuncAddress(void *userdata);
@@ -208,6 +222,7 @@ static void fetchConfigDescriptors(UsbdIoRequest_t *req)
 	staticDeviceDescPtr = (UsbDeviceDescriptor *)dev->m_staticDeviceDescPtr;
 	if ( (int)dev->m_fetchDescriptorCounter > 0 && req->m_resultCode != USB_RC_OK )
 	{
+		usbdTraceEnumeration(dev,4,req->m_resultCode);
 		killDevice(req->m_correspEndpoint->m_correspDevice, req->m_correspEndpoint);
 		return;
 	}
@@ -263,6 +278,7 @@ static void requestDeviceDescrptorCB(UsbdIoRequest_t *req)
 	if ( req->m_resultCode != USB_RC_OK )
 	{
 		dbg_printf("unable to read device descriptor, err %d\n", req->m_resultCode);
+		usbdTraceEnumeration(dev,3,req->m_resultCode);
 		killDevice(req->m_correspEndpoint->m_correspDevice, req->m_correspEndpoint);
 		return;
 	}
@@ -320,6 +336,7 @@ static void hubSetFuncAddressCB(UsbdIoRequest_t *req)
 	dev = req->m_correspEndpoint->m_correspDevice;
 	if ( req->m_resultCode == USB_RC_NORESPONSE )
 	{
+		usbdTraceEnumeration(dev,2,req->m_resultCode);
 		dbg_printf("device not responding\n");
 		dev->m_functionDelay <<= 1;
 		if ( dev->m_functionDelay > 0x500 )
@@ -360,10 +377,12 @@ static void hubSetFuncAddress(void *userdata)
 		hubSetFuncAddressCB);
 }
 
+#include "enum_start.h"
 int hubTimedSetFuncAddress(UsbdDevice_t *dev)
 {
 	dev->m_functionDelay = 20;
-	addTimerCallback(&dev->m_timer, hubSetFuncAddress, dev->m_endpointListStart, 21);
+	addTimerCallback(&dev->m_timer, dev->m_isLowSpeedDevice?lowSpeedDescriptorStart:hubSetFuncAddress,
+        dev->m_endpointListStart, dev->m_isLowSpeedDevice?101:21);
 	return 0;
 }
 

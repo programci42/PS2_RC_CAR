@@ -6,3 +6,5 @@
 #include <sifcmd.h>
 #include <sifrpc.h>
 #include <usbd.h>
+int sceUsbdDiagnosticSnapshot(unsigned *,unsigned);
+#define I_sceUsbdDiagnosticSnapshot DECLARE_IMPORT(19, sceUsbdDiagnosticSnapshot)

@@ -32,4 +32,5 @@ I_sceUsbdOpenPipe
 I_sceUsbdOpenPipeAligned
 I_sceUsbdClosePipe
 I_sceUsbdTransferPipe
+I_sceUsbdDiagnosticSnapshot
 usbd_IMPORTS_end

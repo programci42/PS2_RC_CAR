@@ -10,6 +10,40 @@
 
 #include "usbdpriv.h"
 
+/* Local diagnostic extension, export 19. Read-only snapshot under USBD lock.
+ * Unlike a native EE job, this runs in the IOP context that owns OHCI. */
+int sceUsbdDiagnosticSnapshot(u32 *out, unsigned words)
+{
+    UsbdDevice_t *dev;
+    void *oldgp;
+#if USE_GP_REGISTER
+    oldgp=SetModuleGP();
+#else
+    oldgp=NULL;
+#endif
+    if (!out || words!=5 || usbdLock()) {
+#if USE_GP_REGISTER
+        SetGP(oldgp);
+#endif
+        return USB_RC_BADCONTEXT;
+    }
+    out[0]=memPool->m_ohciRegs->HcRhPortStatus[0];
+    out[1]=memPool->m_ohciRegs->HcRhPortStatus[1];
+    out[2]=usbdEnumFailures[0];out[3]=usbdEnumFailures[1];
+    out[4]=memPool->m_delayResets;
+    for (dev=memPool->m_deviceTreeRoot->m_childListStart;dev;dev=dev->m_next) {
+        unsigned p=dev->m_attachedToPortNo;
+        if(p>=1&&p<=2)out[p+1]|=((unsigned)dev->m_deviceStatus<<8)|(dev->m_id&255);
+    }
+    usbdUnlock();
+#if USE_GP_REGISTER
+    SetGP(oldgp);
+#else
+    (void)oldgp;
+#endif
+    return 0;
+}
+
 int sceUsbdRegisterLdd(sceUsbdLddOps *driver)
 {
 	void *OldGP;

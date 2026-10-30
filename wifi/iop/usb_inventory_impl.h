@@ -48,6 +48,11 @@ static int inventory_string(int ep,unsigned index,unsigned lang,char*out){unsign
 static void inventory_device(UsbInventoryDevice*out){unsigned id=out->id,j,lang=0x409;int ep;
  UsbDeviceDescriptor*d;UsbConfigDescriptor*c;
  memset(out,0,sizeof(*out));out->id=id;
+#ifdef RTL_DRIVER_HOST_TEST
+ memset(out->dma_padding,0,sizeof(out->dma_padding));
+#else
+ sceUsbdDiagnosticSnapshot(out->dma_padding,5);
+#endif
  if(id>=USB_INVENTORY_MAX)return;
  d=sceUsbdScanStaticDescriptor(id,0,USB_DT_DEVICE);if(!d)return;
  out->present=1;memcpy(out->descriptor,d,18);out->location_result=sceUsbdGetDeviceLocation(id,out->location);

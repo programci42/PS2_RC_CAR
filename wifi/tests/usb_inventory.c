@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "usb_inventory.h"
+static int sceUsbdDiagnosticSnapshot(unsigned*out,unsigned n){memset(out,0,n*4);return 0;}
 typedef struct {unsigned char raw[18];} UsbDeviceDescriptor;
 typedef struct {unsigned char a,b;unsigned short wTotalLength;unsigned char raw[2044];} UsbConfigDescriptor;
 #define USB_DT_DEVICE 1

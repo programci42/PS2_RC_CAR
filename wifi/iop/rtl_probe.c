@@ -20,6 +20,9 @@
 #include "rtl_core.h"
 #include "rtl_rpc.h"
 #include "usb_inventory.h"
+#ifndef RTL_DRIVER_HOST_TEST
+extern int sceUsbdDiagnosticSnapshot(unsigned *,unsigned);
+#endif
 #ifdef RTL_PHYSICAL_RADIO
 #include "rtl_wire.h"
 static void wireless_disconnect(void);

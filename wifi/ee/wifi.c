@@ -267,7 +267,7 @@ static void usb_poll(uint32_t now){
         }
         done=pending;pending=0;
         if(done==RTL_RPC_USB_CHECK){offline_probe_done(response.inventory.present,now);
-        }else if(done==RTL_RPC_DEVICE){if(response.inventory.id<USB_INVENTORY_MAX)devices[response.inventory.id]=response.inventory;if(++devices_cursor>=USB_INVENTORY_MAX)devices_scanning=0;devices_due=now+100;
+        }else if(done==RTL_RPC_DEVICE){memcpy(devices_root,response.inventory.dma_padding,sizeof(devices_root));devices_root_format();if(response.inventory.id<USB_INVENTORY_MAX)devices[response.inventory.id]=response.inventory;if(++devices_cursor>=USB_INVENTORY_MAX)devices_scanning=0;devices_due=now+100;
         }else if(done==RTL_RPC_HUB_POWER){if(response.inventory.present){hub_last=response.inventory;snprintf(app.hub_message,sizeof(app.hub_message),"#%u cfg:%u rc:%d P1:%04X P2:%04X P3:%04X P4:%04X",hub_last.id,hub_last.config_total,hub_last.hub_result,usb_word(hub_last.hub_ports[0]),usb_word(hub_last.hub_ports[1]),usb_word(hub_last.hub_ports[2]),usb_word(hub_last.hub_ports[3]));app.dirty=1;}else if(hub_cursor==1){memset(&hub_last,0,sizeof(hub_last));snprintf(app.hub_message,sizeof(app.hub_message),WIFI_TR("No hub detected; monitoring direct USB devices."));app.dirty=1;}hub_powered_ports|=response.inventory.driver_flags;hub_cursor=response.inventory.id+1;if(hub_cursor>=USB_INVENTORY_MAX){hub_cursor=1;hub_check_at=now+3000;}
         }else if(done==RTL_RPC_BOOT){
             if(response.boot.magic==RTL_BOOT_MAGIC&&!response.boot.result&&response.boot.stage==RTL_BOOT_COMPLETE){

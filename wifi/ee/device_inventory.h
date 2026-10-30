@@ -1,5 +1,8 @@
 #include "usb_inventory.h"
 static UsbInventoryDevice devices[USB_INVENTORY_MAX];
+static unsigned devices_root[5];
+static char devices_root_json[900]="[]";
+static void devices_root_format(void){unsigned p,n=0;for(p=0;p<2;p++){unsigned raw=devices_root[p],trace=devices_root[p+2];n+=snprintf(devices_root_json+n,sizeof(devices_root_json)-n,"%s{\"port\":%u,\"rawStatus\":%u,\"connected\":%u,\"enabled\":%u,\"overcurrent\":%u,\"lowSpeed\":%u,\"state\":%u,\"id\":%u,\"lastErrorStage\":%u,\"lastUsbError\":%u}",p?",":"[",p+1,raw,!!(raw&1),!!(raw&2),!!(raw&8),!!(raw&512),(trace>>8)&255,trace&255,trace>>24,(trace>>16)&255);}snprintf(devices_root_json+n,sizeof(devices_root_json)-n,"]");}
 static unsigned devices_cursor,devices_scanning,devices_generation;static uint32_t devices_due;
 static char devices_cards[384]="[]";
 static unsigned usb_word(const unsigned char*p){return p[0]|(p[1]<<8);}
@@ -29,5 +32,5 @@ static int devices_http(const char*method,const char*target,char*out,unsigned ca
  for(i=1;i<USB_INVENTORY_MAX;i++)if(devices[i].present)count++;
  n=snprintf(out,cap,"{\"generation\":%u,\"scanning\":%u,\"count\":%u,\"scanId\":%u,\"padConnected\":%u,\"relayReady\":%u,\"relayUsbStatus\":%d,\"note\":\"USB metadata as supplied by hardware; power-only cables do not enumerate. Empty strings/MAC=null mean unavailable. /?usb=ID returns raw descriptors including interfaces and endpoints. Refresh: /devices/refresh\",\"devices\":[",devices_generation,devices_scanning,count,devices_cursor,runtime.pad_connected,robot.ready,robot_packet.status);
  count=0;for(i=from;i<USB_INVENTORY_MAX;i++)if(devices[i].present){if(n+5000>=cap)break;if(count++)out[n++]=',';n+=device_json(&devices[i],out+n,cap-n,0);}
- snprintf(out+n,cap-n,"],\"listed\":%u,\"truncated\":%s,\"nextId\":%u,\"memoryCards\":%s,\"gamepad\":{\"port\":0,\"slot\":0,\"state\":%d,\"reportedMode\":%u,\"manufacturer\":null,\"mac\":null}}",count,i<USB_INVENTORY_MAX?"true":"false",i<USB_INVENTORY_MAX?i:0,devices_cards,pad_state,pad_reported_mode);return 200;
+ snprintf(out+n,cap-n,"],\"listed\":%u,\"truncated\":%s,\"nextId\":%u,\"usbRoot\":%s,\"resetBusy\":%u,\"memoryCards\":%s,\"gamepad\":{\"port\":0,\"slot\":0,\"state\":%d,\"reportedMode\":%u,\"manufacturer\":null,\"mac\":null}}",count,i<USB_INVENTORY_MAX?"true":"false",i<USB_INVENTORY_MAX?i:0,devices_root_json,devices_root[4],devices_cards,pad_state,pad_reported_mode);return 200;
 }

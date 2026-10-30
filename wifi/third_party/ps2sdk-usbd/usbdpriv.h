@@ -485,6 +485,9 @@ extern int usbdInitInner(void);
 
 // The following is defined in usbd_main.c
 extern UsbdMemoryPool_t *memPool;
+extern u32 usbdEnumFailures[2];
+extern void usbdTraceEnumeration(UsbdDevice_t *dev, unsigned stage, unsigned result);
+extern int sceUsbdDiagnosticSnapshot(u32 *out, unsigned words);
 extern UsbdKernelResources_t usbKernelResources;
 extern UsbdIoRequest_t *cbListStart;
 extern UsbdIoRequest_t *cbListEnd;

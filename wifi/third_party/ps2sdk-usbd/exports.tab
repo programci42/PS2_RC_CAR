@@ -19,6 +19,7 @@ DECLARE_EXPORT(sceUsbdUnregisterAutoloader)
 DECLARE_EXPORT(sceUsbdChangeThreadPriority)
 DECLARE_EXPORT(sceUsbdGetReportDescriptor)
 DECLARE_EXPORT(sceUsbdMultiIsochronousTransfer)
+DECLARE_EXPORT(sceUsbdDiagnosticSnapshot)
 END_EXPORT_TABLE
 
 void _retonly() {}
