@@ -214,6 +214,8 @@ typedef struct _usbHub
 	u32 m_portStatusChange;
 	u8 m_statusChangeInfo[8];  // depends on number of ports
 	u32 m_pad3[6];
+	UsbdTimerCbStruct_t m_runtimeRetryTimer;
+	u32 m_runtimeRetryCount;
 } UsbdUsbHub_t;
 
 typedef struct _hcCA

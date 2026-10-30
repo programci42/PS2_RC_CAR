@@ -4,11 +4,13 @@
 
 A real **PlayStation 2 Slim** controls a four-motor robot over **USB Wi-Fi**, serves its own browser interface and accepts a DualShock gamepad. A custom RTL8192CU driver takes the console from USB attachment to real WPA2 networking, DHCP, ping and HTTP. No PC is required during normal driving.
 
-**[Download Wifi.elf 0.4.31](wifi/Release/Wifi.elf)** · [Quick start](wifi/RELEASE_README_EN.txt) · [Architecture](docs/en/WIFI_ARCHITECTURE.md) · [HTTP API](docs/en/WIFI_API.md) · [Validation](docs/en/WIFI_VALIDATION.md) · [Screenshots](docs/screenshots/wifi/README.md)
+**[Download Wifi.elf 0.4.32](wifi/Release/Wifi.elf)** · [Quick start](wifi/RELEASE_README_EN.txt) · [Architecture](docs/en/WIFI_ARCHITECTURE.md) · [HTTP API](docs/en/WIFI_API.md) · [Validation](docs/en/WIFI_VALIDATION.md) · [Screenshots](docs/screenshots/wifi/README.md)
 
 The integrated application lives in **[`wifi/`](wifi/)**. Root-level `role.elf` and its source preserve the earlier wired robot project. Its older controls, wiring and screenshots are not the current Wi-Fi release.
 
 Version 0.4.31 adds saved Turkish / English selection for both TV and web UI, corrects relay-action remapping and hardens failed-OFF handling. [Changes and validation](docs/en/WIFI_0431.md)
+
+Version 0.4.32 hardens hub status monitoring and relay recovery after runtime USB errors. [Changes and validation limits](docs/en/WIFI_0432.md)
 
 ## Features
 

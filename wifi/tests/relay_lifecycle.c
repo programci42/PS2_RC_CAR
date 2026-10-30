@@ -28,7 +28,7 @@ int main(void){SedaRelayRpcPacket p;unsigned tests=0;u8 owned[65];void*oldcookie
  seda_disconnect(1);submit_fail=1;rpc_handler(4,&p,sizeof(p));assert(relay_dev.status==1&&!configuration_pending);tests++;
  submit_fail=0;rpc_handler(4,&p,sizeof(p));assert(relay_dev.status==2);tests++;
  seda_disconnect(1);attached=0;rebinds=missing_polls=0;before=unregistrations;
- for(int i=0;i<300;i++){rpc_handler(2,&p,sizeof(p));}assert(rebinds==3&&unregistrations==before+3);tests++;
+ for(int i=0;i<300;i++){rpc_handler(2,&p,sizeof(p));}assert(rebinds==5&&unregistrations==before+5);tests++;
  attached=1;rpc_handler(4,&p,sizeof(p));p.command=7;p.mode=9;rpc_handler(1,&p,sizeof(p));assert(!p.result&&live_mask==64);p.command=8;before=transfers;rpc_handler(1,&p,sizeof(p));assert(p.result&&transfers==before&&live_mask==64);tests++;
  submit_fail=1;p.command=23;rpc_handler(1,&p,sizeof(p));assert(p.result&&live_mask==64&&relay_fault);rpc_handler(2,&p,sizeof(p));assert(p.status==1&&watchdog_ticks==0);tests++;
  submit_fail=0;watchdog_step();assert(!live_mask&&!relay_fault);tests++;

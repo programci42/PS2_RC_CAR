@@ -7,6 +7,7 @@ typedef uint32_t u32;typedef uint8_t u8;
 #define BIT(n) (1u<<(n))
 #define PORT_CONNECTION 0
 #define PORT_ENABLE 1
+#define PORT_OVER_CURRENT 3
 #define PORT_LOW_SPEED 9
 #define PORT_RESET 4
 #define C_PORT_CONNECTION 16
@@ -21,7 +22,7 @@ typedef uint32_t u32;typedef uint8_t u8;
 #define dbg_printf(...) ((void)0)
 typedef void(*TimerCallback)(void*);
 typedef struct UsbdTimer {struct UsbdTimer*m_next,*m_prev;int m_isActive;unsigned m_delayCount;TimerCallback m_callbackProc;void*m_callbackArg;} UsbdTimerCbStruct_t;
-typedef struct UsbdDevice {struct UsbdDevice*m_parent,*m_next,*m_childListStart;unsigned m_deviceStatus,m_resetFlag,m_attachedToPortNo,m_isLowSpeedDevice;UsbdTimerCbStruct_t m_timer;} UsbdDevice_t;
+typedef struct UsbdDevice {struct UsbdDevice*m_parent,*m_next,*m_childListStart;unsigned m_deviceStatus,m_resetFlag,m_attachedToPortNo,m_isLowSpeedDevice;UsbdTimerCbStruct_t m_timer;void*m_privDataField;} UsbdDevice_t;
 typedef struct {unsigned HcRhPortStatus[2],HcInterruptEnable,HcInterruptDisable;} FakeOhci;
 typedef struct {unsigned m_delayResets;UsbdDevice_t*m_deviceTreeRoot;UsbdTimerCbStruct_t*m_timerListStart,*m_timerListEnd;FakeOhci*m_ohciRegs;} FakePool;
 extern FakePool*memPool;

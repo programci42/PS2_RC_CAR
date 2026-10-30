@@ -1,6 +1,8 @@
 # Validation record
 
-Current 0.4.31 results: [bilingual interface and relay safety validation](WIFI_0431.md).
+Current 0.4.32 hub recovery changes and deployment status: [validation limits](WIFI_0432.md).
+
+0.4.31 results: [bilingual interface and relay safety validation](WIFI_0431.md).
 
 ## Historical publication baseline — 0.4.30
 

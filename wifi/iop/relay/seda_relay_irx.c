@@ -593,7 +593,7 @@ static void *rpc_handler(int command, void *buffer, int size)
        Never reset USBD or the Wi-Fi LDD to recover the relay. */
     if(command==SEDA_RELAY_RPC_GET_STATUS){
         if(relay_dev.status==SEDA_RELAY_STATUS_READY&&!relay_fault){missing_polls=0;rebinds=0;}
-        else if(++missing_polls>=60&&rebinds<3&&(!live_mask||relay_fault))command=SEDA_RELAY_RPC_RECOVER;
+        else if(++missing_polls>=60&&(!live_mask||relay_fault))command=SEDA_RELAY_RPC_RECOVER;
     }
     switch (command) {
     case SEDA_RELAY_RPC_READY_SIGNAL:

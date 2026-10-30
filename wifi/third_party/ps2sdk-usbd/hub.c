@@ -10,6 +10,7 @@
 
 #include "usbdpriv.h"
 #include "hub_ports.h"
+#include "hub_runtime.h"
 
 static void hubStatusChangeCallback(UsbdIoRequest_t *req);
 static void hubGetPortStatusCallback(UsbdIoRequest_t *req);
@@ -50,6 +51,8 @@ static UsbdUsbHub_t *allocHubBuffer(void)
 	res->m_statusIoReq.m_busyFlag = 0;
 	res->m_controlIoReq.m_busyFlag = 0;
     res->m_pad3[0] = 0; /* local initial port scan cursor */
+    bzero(&res->m_runtimeRetryTimer, sizeof(res->m_runtimeRetryTimer));
+    res->m_runtimeRetryCount = 0;
 	res->m_curAllocatedCount = hubAllocatedCount;
 	hubAllocatedCount += 1;
 	return res;
@@ -57,6 +60,9 @@ static UsbdUsbHub_t *allocHubBuffer(void)
 
 static void freeHubBuffer(UsbdUsbHub_t *hub)
 {
+    if (!hub) return;
+    if (hub->m_runtimeRetryTimer.m_isActive) cancelTimerCallback(&hub->m_runtimeRetryTimer);
+    hub->m_dev = NULL;
 	hub->m_next = hubBufferList;
 	hubBufferList = hub;
 }
@@ -123,8 +129,10 @@ static void hubGetPortStatusCallback(UsbdIoRequest_t *req)
 	if ( req->m_resultCode != USB_RC_OK )
 	{
 		dbg_printf("HubGetPortStatusCallback res %d\n", req->m_resultCode);
+		hubRuntimeError(dev);
 		return;
 	}
+    hubRuntimeHealthy(dev);
 	dbg_printf("port status change: %d: %08X\n", dev->m_portCounter, dev->m_portStatusChange);
 	if ( (dev->m_portStatusChange & BIT(C_PORT_CONNECTION)) != 0 )
 	{
@@ -174,6 +182,10 @@ static void hubGetPortStatusCallback(UsbdIoRequest_t *req)
 	port = fetchPortElemByNumber(dev->m_controlEp->m_correspDevice, dev->m_portCounter);
 	if ( port )
 	{
+        if (hubRuntimePortDisabled(dev, port)) {
+            hubStatusChangeCallback(&dev->m_statusIoReq);
+            return;
+        }
 		if ( (dev->m_portStatusChange & BIT(PORT_CONNECTION)) != 0 )
 		{
 			dbg_printf("Hub Port CCS\n");
@@ -283,8 +295,10 @@ static void hubGetHubStatusCallback(UsbdIoRequest_t *req)
 	dev = (UsbdUsbHub_t *)req->m_userCallbackArg;
 	if ( req->m_resultCode != USB_RC_OK )
 	{
+		hubRuntimeError(dev);
 		return;
 	}
+    hubRuntimeHealthy(dev);
 	if ( (dev->m_hubStatusChange & BIT(C_HUB_LOCAL_POWER)) != 0 )
 	{
 		dev->m_hubStatusChange &= ~BIT(C_HUB_LOCAL_POWER);
@@ -329,8 +343,10 @@ static void hubStatusChangeCallback(UsbdIoRequest_t *req)
 	if ( req->m_resultCode != USB_RC_OK )
 	{
 		dbg_printf("hubStatusChangeCallback, iores %d\n", req->m_resultCode);
+		hubRuntimeError(dev);
 		return;
 	}
+    hubRuntimeHealthy(dev);
 	if ( (dev->m_statusChangeInfo[0] & 1) != 0 )
 	{
 		dev->m_statusChangeInfo[0] &= ~1;
