@@ -16,6 +16,7 @@ int program_test(void){RobotProgram p,loaded;RpConfig cfg;char json[3501];int n;
   P(rp_tick(&p,0x400,1,0,1,0)==1);P(rp_tick(&p,0x400,1,0,0,1000)==1&&!p.waiting);P(rp_tick(&p,0x400,1,1,1,1100)==1&&p.waiting);P(rp_tick(&p,0x400,1,1,1,1199)==1);P(rp_tick(&p,0x400,1,1,1,1200)==0);P(rp_tick(&p,0x400,1,1,0,1400)==0&&!p.waiting);P(rp_tick(&p,0x400,1,0,1,1500)==0&&p.waiting);P(rp_tick(&p,0x400,1,0,1,1599)==0);P(rp_tick(&p,0x400,1,0,1,1600)==2);P(rp_tick(&p,0,1,2,1,1601)==0);}
  rp_default(&p,0,1);P(rp_tick(&p,0x4000|0x1000,1,0,1,0)==0);P(rp_tick(&p,0x4000,0,0,1,1)==0);P(rp_tick(&p,0x4000,1,5,0,2)==0);P(rp_tick(&p,0x4000,1,0,1,3)==5);
  for(mask=0;mask<256;mask++){int safe=1;for(i=0;i<4;i++)if(((mask>>(2*i))&3)==3)safe=0;P(rp_mask_safe(mask)==safe);}
+ rp_default(&loaded,2,1);for(i=0;i<RP_KEYS;i++)rp_retarget(&loaded.config.key[i],2,1,3,1);P(loaded.config.key[3].op[1]==9&&loaded.config.key[3].op[2]==5);
  /* Long-lived DHCP: unicast renewal retains the address and refreshes lease. */
  rtl_dhcp_start(&d,fx_sta,0x12345678,0);P(rtl_dhcp_rx(&d,1,fx_offer,sizeof(fx_offer))==1);P(rtl_dhcp_rx(&d,2,fx_ack,sizeof(fx_ack))==2);P(d.t1==30&&d.t2==53);
  P(rtl_dhcp_tx(&d,30002,frame,sizeof(frame))==342&&d.state==RTL_DHCP_RENEW&&rtl_dhcp_has_lease(&d));P(!memcmp(frame,d.server_mac,6)&&!memcmp(frame+26,d.ip,4)&&!memcmp(frame+30,d.server,4)&&!memcmp(frame+54,d.ip,4)&&checksum(frame+14,20)==65535);

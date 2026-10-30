@@ -1,3 +1,4 @@
+#include "wifi_i18n.h"
 /* SPDX-License-Identifier: MIT. RFC 9293 TCP subset for a local HTTP/1.0
  * status page: bounded clients/headers, stop-and-wait TX, MSS, checksums,
  * duplicate/out-of-order ACKs, retransmission and idle expiry. No TLS. */
@@ -28,34 +29,36 @@ void rtl_http_init(RtlHttp*h,const uint8_t mac[6],const uint8_t ip[4],uint32_t s
 static const char*field(const char*s,const char*key){const char*p=s;unsigned i;while((p=strstr(p,"\r\n"))!=0){p+=2;if(!strncmp(p,"\r\n",2))break;for(i=0;key[i]&&p[i]&&tolower((unsigned char)p[i])==key[i];i++);if(!key[i]){p+=i;while(*p==' ')p++;return p;}}return 0;}
 static const char*reason(int code){switch(code){case 200:return "OK";case 206:return "Partial Content";case 400:return "Bad Request";case 403:return "Forbidden";case 404:return "Not Found";case 405:return "Method Not Allowed";case 409:return "Conflict";case 413:return "Content Too Large";case 416:return "Range Not Satisfiable";case 422:return "Unprocessable Content";case 428:return "Precondition Required";case 503:return "Service Unavailable";case 507:return "Insufficient Storage";default:return "Internal Server Error";}}
 #include "ps2_tools_asset.h"
+#include "wifi_i18n_asset.h"
 static void page(RtlHttp*h,RtlHttpClient*c,uint32_t now){
     static char body[28000];const char *status="200 OK",*title="PS2 Slim Wi-Fi",*type="text/html; charset=utf-8";int len,head=0;
     {const char*s=strchr(c->request,' '),*e=s?strchr(s+1,' '):0;unsigned i;int root=!strncmp(c->request,"GET / HTTP/1.",13)||!strncmp(c->request,"HEAD / HTTP/1.",14);
      if(h->single_peer&&(!h->peer_valid||root||((uint32_t)(now-h->peer_at)>30000u))){
       if(!h->peer_valid||memcmp(h->peer_ip,c->ip,4)){for(i=0;i<RTL_HTTP_CLIENTS;i++)if(h->client+i!=c&&h->client[i].state&&memcmp(h->client[i].ip,c->ip,4))close_client(h->client+i);memcpy(h->peer_ip,c->ip,4);h->peer_valid=1;}
      }
-     if(h->single_peer&&h->peer_valid&&memcmp(h->peer_ip,c->ip,4)){snprintf(body,sizeof(body),"Another device took control. Open the home page to reconnect.");status="423 Locked";type="text/plain; charset=utf-8";goto response;}
+     if(h->single_peer&&h->peer_valid&&memcmp(h->peer_ip,c->ip,4)){snprintf(body,sizeof(body),WIFI_TR("Another device took control. Open the home page to reconnect."));status="423 Locked";type="text/plain; charset=utf-8";goto response;}
      h->peer_at=now;h->requests++;
      if(s&&e){unsigned m=s-c->request,n=e-s-1;const char*q=memchr(s+1,'?',n);if(q)n=q-s-1;if(m>7)m=7;if(n>26)n=26;snprintf(h->last_request,sizeof(h->last_request),"HTTP %u.%u.%u.%u %.*s %.*s",c->ip[0],c->ip[1],c->ip[2],c->ip[3],m,c->request,n,s+1);}
     }
+    if(!strncmp(c->request,"GET /i18n.js HTTP/1.",20)){snprintf(body,sizeof(body),"window.ps2Language=\"%s\";\n%s",wifi_language?"en":"tr",WIFI_I18N_ASSET);type="application/javascript; charset=utf-8";goto response;}
     if(!strncmp(c->request,"GET /tools HTTP/1.",18)){snprintf(body,sizeof(body),"%s",PS2_TOOLS_ASSET);goto response;}
     if(h->api){char method[8],target[256];const char*s=strchr(c->request,' '),*e=s?strchr(s+1,' '):0,*b=strstr(c->request,"\r\n\r\n");
         if(s&&e&&b&&s-c->request<8&&e-s-1<256){int code;memcpy(method,c->request,s-c->request);method[s-c->request]=0;memcpy(target,s+1,e-s-1);target[e-s-1]=0;body[0]=0;
             code=h->api(h->api_context,method,target,c->request,(const uint8_t*)b+4,c->request_size-(unsigned)(b+4-c->request),now,body,sizeof(body));
-            if(code){char state[64];if(code>=400&&h->error_sink)h->error_sink(h->api_context,"HTTP settings/system request rejected or not saved.");snprintf(state,sizeof(state),"%d %s",code,reason(code));type=code==200?"application/json; charset=utf-8":"text/plain; charset=utf-8";head=!strcmp(method,"HEAD");len=strlen(body);c->response_size=snprintf(c->response,sizeof(c->response),"HTTP/1.0 %s\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n\r\n%s",state,type,len,head?"":body);c->response_sent=0;c->state=3;return;}
+            if(code){char state[64];if(code>=400&&h->error_sink)h->error_sink(h->api_context,WIFI_TR("HTTP settings/system request rejected or not saved."));snprintf(state,sizeof(state),"%d %s",code,reason(code));type=code==200?"application/json; charset=utf-8":"text/plain; charset=utf-8";head=!strcmp(method,"HEAD");len=strlen(body);c->response_size=snprintf(c->response,sizeof(c->response),"HTTP/1.0 %s\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n\r\n%s",state,type,len,head?"":body);c->response_sent=0;c->state=3;return;}
         }
     }
     if(h->files){char method[8],target[1024];const char*space=strchr(c->request,' '),*end=space?strchr(space+1,' '):0,*body_at=strstr(c->request,"\r\n\r\n");int handled=0;
         if(space&&end&&space-c->request<8&&end-space-1<1024&&body_at){WfReply reply;memcpy(method,c->request,space-c->request);method[space-c->request]=0;memcpy(target,space+1,end-space-1);target[end-space-1]=0;
-            if(h->file_blocked&&(!strncmp(target,"/?",2)||!strncmp(target,"/files/",7))){snprintf(body,sizeof(body),"Stop robot and release buttons before file operations.");status="409 Conflict";type="text/plain; charset=utf-8";goto response;}
+            if(h->file_blocked&&(!strncmp(target,"/?",2)||!strncmp(target,"/files/",7))){snprintf(body,sizeof(body),WIFI_TR("Stop robot and release buttons before file operations."));status="409 Conflict";type="text/plain; charset=utf-8";goto response;}
             handled=wifi_files_request(h->files,method,target,c->request,(const uint8_t*)body_at+4,c->request_size-(unsigned)(body_at+4-c->request),now,&reply);
             if(handled>0){unsigned headers;head=!strcmp(method,"HEAD");
-                if(reply.status>=500&&h->error_sink)h->error_sink(h->api_context,"HTTP file I/O error.");
+                if(reply.status>=500&&h->error_sink)h->error_sink(h->api_context,WIFI_TR("HTTP file I/O error."));
                 headers=snprintf(c->response,sizeof(c->response),"HTTP/1.0 %d %s\r\nContent-Type: %s\r\nContent-Length: %lu\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nAccept-Ranges: bytes\r\n%s\r\n",reply.status,reason(reply.status),reply.type,(unsigned long)reply.size,reply.extra);
                 c->resource=reply;c->header_size=headers;c->response_size=headers+(head?0:reply.size);if(head)release_resource(c);c->response_sent=0;c->state=3;return;
             }
         }
-        if(handled<0){snprintf(body,sizeof(body),"Not enough memory for file service.");status="503 Service Unavailable";type="text/plain; charset=utf-8";goto response;}
+        if(handled<0){snprintf(body,sizeof(body),WIFI_TR("Not enough memory for file service."));status="503 Service Unavailable";type="text/plain; charset=utf-8";goto response;}
     }
     if(!strncmp(c->request,"GET /status HTTP/1.",19)){
         snprintf(body,sizeof(body),"{\"ready\":%u,\"owner\":%u,\"mask\":%u,\"left\":%u,\"right\":%u}",h->relay_ready,h->owner,h->mask,h->left,h->right);type="application/json";goto response;
@@ -67,12 +70,12 @@ static void page(RtlHttp*h,RtlHttpClient*c,uint32_t now){
             result=h->control?h->control(h->control_context,command,now):-1;
         }
         status=result==0?"200 OK":result==-1?"503 Service Unavailable":result==-2?"409 Conflict":"400 Bad Request";
-        snprintf(body,sizeof(body),"%s",result==0?"Command accepted.":result==-1?"Relay board not ready.":result==-2?"Gamepad has priority or command is stale.":"Invalid control request.");type="text/plain; charset=utf-8";goto response;
+        snprintf(body,sizeof(body),"%s",result==0?WIFI_TR("Command accepted."):result==-1?WIFI_TR("Relay board not ready."):result==-2?WIFI_TR("Gamepad has priority or command is stale."):WIFI_TR("Invalid control request."));type="text/plain; charset=utf-8";goto response;
     }
     if(!strncmp(c->request,"HEAD / HTTP/1.",14))head=1;
     else if(strncmp(c->request,"GET / HTTP/1.",13)){
-        if(!strncmp(c->request,"GET ",4)||!strncmp(c->request,"HEAD ",5)){status="404 Not Found";title="Page not found";}
-        else {status="405 Method Not Allowed";title="Only GET and HEAD are supported";}
+        if(!strncmp(c->request,"GET ",4)||!strncmp(c->request,"HEAD ",5)){status="404 Not Found";title=WIFI_TR("Page not found");}
+        else {status="405 Method Not Allowed";title=WIFI_TR("Only GET and HEAD are supported");}
     }
     snprintf(body,sizeof(body),"<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>PS2 Slim Robot</title><body><h1>%s</h1><p>Wi-Fi connection active.</p><p>IP: %u.%u.%u.%u · Version: %s · HTTP requests: %lu</p>%s</body></html>",title,h->ip[0],h->ip[1],h->ip[2],h->ip[3],WIFI_VERSION,(unsigned long)h->requests,ROBOT_WEB_ASSET);
 response:

@@ -1,3 +1,4 @@
+#include "wifi_i18n.h"
 /* RAM-only device model: never opens a host file or a real PS2 memory card. */
 #include "wifi_files.h"
 #include "rtl_http.h"
@@ -123,6 +124,10 @@ int files_test(void){char path[WF_PATH],target[1024];unsigned i,before;unsigned 
   T(wifi_runtime_api(&rt,"GET","/?reload=1",get,0,0,200,result,sizeof(result))==409);
   T(wifi_runtime_api(&rt,"GET","/?shutdown=-s",get,0,0,300,result,sizeof(result))==200&&rt.system_action==1&&rt.system_due==300);
   T(wifi_runtime_api(&rt,"GET","/?shutdown=-s-t",get,0,0,300,result,sizeof(result))==400);T(wifi_runtime_api(&rt,"GET","/?shutdown=-x-t3",get,0,0,300,result,sizeof(result))==400);
+  T(wifi_language==0);T(wifi_runtime_api(&rt,"GET","/language",get,0,0,0,result,sizeof(result))==200&&strstr(result,"\"tr\""));
+  T(wifi_runtime_api(&rt,"POST","/language",get,(const uint8_t*)"en",2,0,result,sizeof(result))==403);
+  T(wifi_runtime_api(&rt,"POST","/language","POST / HTTP/1.0\r\nX-PS2-Control: 1\r\n\r\n",(const uint8_t*)"en",2,0,result,sizeof(result))==200&&wifi_language==1);
+  wifi_runtime_init(&loaded,&fs,&robot,0);T(wifi_language==1);
   T(!wifi_runtime_channel(&rt,6));wifi_runtime_init(&loaded,&fs,&robot,0);T(loaded.last_channel==6);T(wifi_runtime_channel(&rt,14)<0);
   T(wifi_runtime_api(&rt,"GET","/?display=1",get,0,0,400,result,sizeof(result))==200&&rt.display_requested&&rt.display_enabled);
   rt.pad_connected=1;rt.pad_buttons=0x300;T(wifi_runtime_api(&rt,"GET","/display",get,0,0,400,result,sizeof(result))==200&&strstr(result,"\"L2\":1")&&strstr(result,"\"R2\":1"));

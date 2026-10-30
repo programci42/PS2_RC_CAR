@@ -209,3 +209,10 @@ include/robot_web_asset.h: web/controls.html tools/build-web-assets.cjs
 	node tools/build-web-assets.cjs
 include/ps2_tools_asset.h: web/tools.html tools/build-web-assets.cjs
 	node tools/build-web-assets.cjs
+
+include/wifi_i18n_asset.h: web/i18n-runtime.js web/translations.json web/controls.html tools/build-web-assets.cjs
+	node tools/build-web-assets.cjs
+src/rtl_http.o: include/wifi_i18n_asset.h include/wifi_i18n.h
+src/wifi_app.o src/wifi_runtime.o ee/wifi.o ee/wifi_render.o: include/wifi_i18n.h
+include/wifi_i18n.h: web/translations.json tools/build-web-assets.cjs
+	node tools/build-web-assets.cjs

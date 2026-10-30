@@ -4,16 +4,18 @@
 
 A real **PlayStation 2 Slim** controls a four-motor robot over **USB Wi-Fi**, serves its own browser interface and accepts a DualShock gamepad. A custom RTL8192CU driver takes the console from USB attachment to real WPA2 networking, DHCP, ping and HTTP. No PC is required during normal driving.
 
-**[Download Wifi.elf 0.4.30](wifi/Release/Wifi.elf)** · [Quick start](wifi/RELEASE_README_EN.txt) · [Architecture](docs/en/WIFI_ARCHITECTURE.md) · [HTTP API](docs/en/WIFI_API.md) · [Validation](docs/en/WIFI_VALIDATION.md) · [Screenshots](docs/screenshots/wifi/README.md)
+**[Download Wifi.elf 0.4.31](wifi/Release/Wifi.elf)** · [Quick start](wifi/RELEASE_README_EN.txt) · [Architecture](docs/en/WIFI_ARCHITECTURE.md) · [HTTP API](docs/en/WIFI_API.md) · [Validation](docs/en/WIFI_VALIDATION.md) · [Screenshots](docs/screenshots/wifi/README.md)
 
 The integrated application lives in **[`wifi/`](wifi/)**. Root-level `role.elf` and its source preserve the earlier wired robot project. Its older controls, wiring and screenshots are not the current Wi-Fi release.
+
+Version 0.4.31 adds saved Turkish / English selection for both TV and web UI, corrects relay-action remapping and hardens failed-OFF handling. [Changes and validation](docs/en/WIFI_0431.md)
 
 ## Features
 
 | Feature | What runs on the PS2 |
 |---|---|
 | Physical USB Wi-Fi | RTL8192CU discovery, firmware loading, radio setup, SSID scan, 802.11 authentication/association, WPA2, DHCP, ARP and ICMP |
-| Browser driving | English **Robot Control**, **File Upload & Download**, **Run Command** and **Settings** tabs |
+| Browser driving | Turkish (default) / English **Robot Control**, **File Upload & Download**, **Run Command** and **Settings** tabs |
 | Gamepad priority | Independent control thread, release-to-stop, emergency stop, relay interlocks and configurable dead time |
 | Programmable buttons | Multiple ordered actions per button: stop, wait 100 ms, individual relay on/off; JSON persistence |
 | USB hub support | Correct port routing, startup discovery, reset recovery and complete hub status bitmaps |
@@ -51,7 +53,7 @@ The relay is **not tied to one hub socket or USB device ID**. Tests cover eight 
 
 The relay board has separate data and power cables. A power-only cable does not enumerate as a USB device. Software cannot measure USB supply capacity or fix insufficient power. Battery percentage is a configurable consumption **estimate**, not a sensor measurement.
 
-Motor groups can use R1/R2, R3/R4, R5/R6 or R7/R8; left/right conflicts are prevented. The tested vehicle uses R5/R6 on the left and R3/R4 on the right. **Never energize every motor relay together.** The optional startup pulse uses only unassigned R1 for 100 ms and is skipped if that group drives motors.
+Motor groups can use R1/R2, R3/R4, R5/R6 or R7/R8; left/right conflicts are prevented. The current vehicle uses R7/R8 on the left and R3/R4 on the right. **Never energize every motor relay together.** Startup does not energize any relay. Changing groups remaps existing gamepad actions as well as web controls. USB transfer faults keep outputs marked uncertain, block fresh ON commands and trigger independent OFF retries. Software cannot diagnose or repair burned/welded relay contacts.
 
 ## Install
 

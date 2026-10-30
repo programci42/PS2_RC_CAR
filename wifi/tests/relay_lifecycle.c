@@ -18,15 +18,19 @@ int main(void){SedaRelayRpcPacket p;unsigned tests=0;u8 owned[65];void*oldcookie
  assert(relay_module_start(0,0)==0&&relay_dev.dev_id==-1);tests++;
  memset(&p,0,sizeof(p));rpc_handler(4,&p,sizeof(p));assert(!p.result&&unregistrations==1);tests++;
  attached=1;rpc_handler(4,&p,sizeof(p));assert(relay_dev.status==2&&relay_dev.dev_id==1);tests++;
- p.mode=9;trace_n=0;rpc_handler(5,&p,sizeof(p));assert(!p.result&&!live_mask&&trace_n==2&&trace[0]==1&&trace[1]==17&&signal_waits==1);tests++;
+ p.mode=9;trace_n=0;rpc_handler(5,&p,sizeof(p));assert(p.result&&!live_mask&&trace_n==0);tests++;
  p.command=1;p.mode=9;rpc_handler(1,&p,sizeof(p));assert(!p.result&&live_mask==1);before=unregistrations;rpc_handler(4,&p,sizeof(p));assert(p.result==-1&&unregistrations==before);tests++;
  p.command=17;rpc_handler(1,&p,sizeof(p));assert(!live_mask);tests++;
  timeout_mode=1;p.command=2;rpc_handler(1,&p,sizeof(p));assert(p.result&&transfer_pending);memcpy(owned,relay_dev.report,65);oldcookie=cookie;oldcb=late;before=transfers;
  p.command=3;rpc_handler(1,&p,sizeof(p));assert(p.result&&transfers==before&&!memcmp(owned,relay_dev.report,65));tests++;
  seda_disconnect(1);assert(!memcmp(owned,relay_dev.report,65)&&!seda_probe(1));tests++;
- timeout_mode=0;rpc_handler(4,&p,sizeof(p));assert(relay_dev.status==2&&!transfer_pending);oldcb(0,8,oldcookie);assert(relay_dev.status==2&&!transfer_pending);tests++;
+ timeout_mode=0;rpc_handler(4,&p,sizeof(p));assert(relay_dev.status==2&&!transfer_pending);oldcb(0,8,oldcookie);assert(relay_dev.status==2&&!transfer_pending);watchdog_step();assert(!live_mask&&!relay_fault);tests++;
  seda_disconnect(1);submit_fail=1;rpc_handler(4,&p,sizeof(p));assert(relay_dev.status==1&&!configuration_pending);tests++;
  submit_fail=0;rpc_handler(4,&p,sizeof(p));assert(relay_dev.status==2);tests++;
  seda_disconnect(1);attached=0;rebinds=missing_polls=0;before=unregistrations;
  for(int i=0;i<300;i++){rpc_handler(2,&p,sizeof(p));}assert(rebinds==3&&unregistrations==before+3);tests++;
- printf("RELAY_LIFECYCLE_TEST PASS %u cases actual-IOP-driver rebind-no-wifi-reset outputs-on-blocked timeout-buffer-owned stale-callback-rejected config-retry\n",tests);return 0;}
+ attached=1;rpc_handler(4,&p,sizeof(p));p.command=7;p.mode=9;rpc_handler(1,&p,sizeof(p));assert(!p.result&&live_mask==64);p.command=8;before=transfers;rpc_handler(1,&p,sizeof(p));assert(p.result&&transfers==before&&live_mask==64);tests++;
+ submit_fail=1;p.command=23;rpc_handler(1,&p,sizeof(p));assert(p.result&&live_mask==64&&relay_fault);rpc_handler(2,&p,sizeof(p));assert(p.status==1&&watchdog_ticks==0);tests++;
+ submit_fail=0;watchdog_step();assert(!live_mask&&!relay_fault);tests++;
+ p.command=8;rpc_handler(1,&p,sizeof(p));assert(live_mask==128);for(int i=0;i<20;i++)watchdog_step();assert(!live_mask);tests++;
+ printf("RELAY_LIFECYCLE_TEST PASS %u cases actual-IOP-driver rebind-no-wifi-reset outputs-on-blocked timeout-buffer-owned stale-callback-rejected config-retry failed-OFF-keeps-mask status-polls-cannot-defeat-fault-watchdog IOP-opposite-interlock no-startup-pulse\n",tests);return 0;}

@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "robot_control.h"
+unsigned wifi_language=1;
 #include "robot_program.h"
 #include "wifi_files.h"
 #include "seda_relay_rpc.h"
@@ -45,5 +46,7 @@ int main(void){unsigned before;robot_usb_init(0);run(0,0,1,1000);U(binds>=2&&rob
  {RobotProgram p;unsigned off;rp_default(&p,0,1);robot.program_mode=1;run_program(&p,0,300);run_program(&p,0x4000,500);U(mask==5);run_program(&p,0,300);U(!mask);
   memset(&p,0,sizeof(p));p.config.right=1;p.config.key[0].count=6;{uint8_t op[]={0,2,1,10,1,3};memcpy(p.config.key[0].op,op,6);}run_program(&p,0x4000,50);U(mask==1);run_program(&p,0,300);U(!mask);
   run_program(&p,0x4000,700);U(mask==2);off=off_time[0];U(now-off>=100);run_program(&p,0,300);U(!mask);}
- printf("ROBOT_USB_TEST PASS checks=%u actual-EE-scheduler RPC=mock startup-off-break-before-make-pad-web-disconnect-fault-custom-sequence-wait-release\n",checks);return 0;
+ {RobotProgram p;unsigned k;rp_default(&p,3,1);robot.left=3;robot.right=1;for(k=0;k<4;k++){unsigned expected[]={68,72,132,136};run_program(&p,rp_buttons[k],500);U(mask==expected[k]);run_program(&p,0,100);U(!mask);}
+  run_program(&p,0x1000,400);U(mask==136);fail_next=1;run_program(&p,0,10);run_program(&p,0,10);U(robot.output_uncertain&&robot.applied);run_program(&p,0x1000,700);U(!mask);run_program(&p,0,500);run_program(&p,0x1000,500);U(mask==136);run_program(&p,0,100);U(!mask);}
+ printf("ROBOT_USB_TEST PASS checks=%u actual-EE-scheduler RPC=mock startup-off-break-before-make-pad-web-disconnect-fault-custom-sequence-wait-release all-face-buttons failed-OFF-preserves-mask requires-release\n",checks);return 0;
 }

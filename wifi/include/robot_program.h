@@ -15,4 +15,5 @@ int rp_parse(const char*,unsigned,RpConfig*);
 int rp_json(const RpConfig*,char*,unsigned);
 unsigned rp_tick(RobotProgram*,uint32_t,int,unsigned,int,uint32_t);
 int rp_mask_safe(unsigned);
+void rp_retarget(RpBinding*,unsigned,unsigned,unsigned,unsigned);
 #endif

@@ -1,3 +1,4 @@
+#include "wifi_i18n.h"
 /* SPDX-License-Identifier: MIT. Native physical-radio client, no sample SSIDs. */
 #include "rtl_wire.h"
 #include "rtl_supplicant.h"
@@ -38,24 +39,24 @@ static void physical_header(uint8_t *h,unsigned fc){
 static void physical_auth(uint32_t now){
     physical_header(queued.bytes,0xb0);memset(queued.bytes+24,0,6);queued.bytes[26]=1;
     queued.length=30;queued_kind=1;physical_phase=PH_AUTH;physical_deadline=now+5000;
-    physical_message("Access point: 802.11 authentication...");
+    physical_message(WIFI_TR("Access point: 802.11 authentication..."));
 }
 static void physical_assoc(void){
     static const uint8_t rates[]={1,8,0x82,0x84,0x8b,0x96,12,18,24,36,50,4,48,72,96,108};
     uint8_t rsn[22];
     RtlAccessPoint *a=&app.scan.ap[app.selected];uint8_t *p=queued.bytes;
-    if(rtl_supplicant_station_rsn(a->rsn,a->rsn_length,rsn)){physical_failure("Invalid network WPA2 information.");return;}
+    if(rtl_supplicant_station_rsn(a->rsn,a->rsn_length,rsn)){physical_failure(WIFI_TR("Invalid network WPA2 information."));return;}
     physical_header(p,0);p[24]=0x11;p[25]=0;p[26]=10;p[27]=0;
     p[28]=0;p[29]=a->ssid_length;memcpy(p+30,a->ssid,a->ssid_length);
     memcpy(p+30+a->ssid_length,rates,sizeof(rates));
     memcpy(p+30+a->ssid_length+sizeof(rates),rsn,sizeof(rsn));
     queued.length=30+a->ssid_length+sizeof(rates)+sizeof(rsn);queued_kind=1;physical_phase=PH_ASSOC;
-    physical_message("Sending access-point association request...");
+    physical_message(WIFI_TR("Sending access-point association request..."));
 }
 static void physical_scan_start(uint32_t now){
     physical_stop();memset(&physical_scan,0,sizeof(physical_scan));physical_ticket=app.ticket;
     physical_channel=physical_preferred_channel?physical_preferred_channel:1;physical_scan_resume=physical_preferred_channel?1:0;physical_scan_limit=now+30000;physical_phase=PH_SCAN_SET;physical_deadline=now;
-    physical_message("Radio ready. Starting real SSID scan...");
+    physical_message(WIFI_TR("Radio ready. Starting real SSID scan..."));
 }
 static void physical_join_start(uint32_t now){
     uint8_t nonce[32];RtlAccessPoint *ap=&app.scan.ap[app.selected];
@@ -64,17 +65,17 @@ static void physical_join_start(uint32_t now){
     handshake_restarts=0;
     management_attempts=1;join_tx=join_rx=join_ap_rx=0;
     assoc_seen=assoc_to_us=auth_seen=0;
-    if(rtl_tkip_guard_blocked(&tkip_guard,now)){physical_failure("TKIP MIC protection: retry after 60 seconds.");return;}
+    if(rtl_tkip_guard_blocked(&tkip_guard,now)){physical_failure(WIFI_TR("TKIP MIC protection: retry after 60 seconds."));return;}
     {int seed_result=rtl_nonce_next("mc0:/RTL_WIFI/SEED.DAT",nonce);
     if(seed_result){
         physical_failure(rtl_nonce_error(seed_result));return;
     }
     }
     if(rtl_supplicant_start(&supplicant,app.pending_pmk,ap->bssid,physical_mac,nonce,ap->rsn,ap->rsn_length)){
-        wipe(nonce,sizeof(nonce));physical_failure("Invalid WPA2-CCMP network information.");return;
+        wipe(nonce,sizeof(nonce));physical_failure(WIFI_TR("Invalid WPA2-CCMP network information."));return;
     }
     wipe(nonce,sizeof(nonce));physical_channel=ap->channel;physical_phase=PH_AUTH_SET;physical_deadline=now;
-    physical_message("Setting channel; preparing to join access point...");
+    physical_message(WIFI_TR("Setting channel; preparing to join access point..."));
 }
 static int physical_ethernet_tx(const uint8_t *p,unsigned n,unsigned kind){
     uint8_t header[24],plain[1514];int len;
@@ -102,15 +103,15 @@ static void physical_packet(const uint8_t *p,unsigned n,uint32_t now){
         /* Multicast data is needed for ARP/DHCP, but management is unicast. */
         if(n<24||!(p[4]&1)||memcmp(p+10,apmac,6)||(p[0]&0x0c)!=8)return;
     }
-    if(p[0]==0xc0||p[0]==0xa0){physical_failure("Access point disconnected the station.");return;}
+    if(p[0]==0xc0||p[0]==0xa0){physical_failure(WIFI_TR("Access point disconnected the station."));return;}
     if(physical_phase==PH_AUTH&&p[0]==0xb0&&n>=30&&!memcmp(p+16,apmac,6)){
-        if(p[24]||p[25]||p[26]!=2||p[27]||p[28]||p[29]){physical_failure("802.11 authentication rejected.");return;}
+        if(p[24]||p[25]||p[26]!=2||p[27]||p[28]||p[29]){physical_failure(WIFI_TR("802.11 authentication rejected."));return;}
         management_attempts=1;physical_deadline=now+5000;physical_assoc();return;
     }
     if(physical_phase==PH_ASSOC&&p[0]==0x10&&n>=30&&!memcmp(p+16,apmac,6)){
-        if(p[26]||p[27]){char reason[96];snprintf(reason,sizeof(reason),"ASSOC rejected; access-point status: %u",p[26]|((unsigned)p[27]<<8));physical_failure(reason);return;}
+        if(p[26]||p[27]){char reason[96];snprintf(reason,sizeof(reason),WIFI_TR("ASSOC rejected; access-point status: %u"),p[26]|((unsigned)p[27]<<8));physical_failure(reason);return;}
         physical_phase=PH_WPA;physical_deadline=now+20000;
-        physical_message("Association accepted. Waiting for WPA2 M1/M3...");return;
+        physical_message(WIFI_TR("Association accepted. Waiting for WPA2 M1/M3..."));return;
     }
     if(physical_phase<PH_WPA||(p[0]!=8&&p[0]!=0x88)||(p[1]&3)!=2)return;
     {unsigned h=p[0]==0x88?26:24;
@@ -121,7 +122,7 @@ static void physical_packet(const uint8_t *p,unsigned n,uint32_t now){
             printf("WIFI_DATA encryptedBytes=%u group=%u cipher=%u decryptResult=%d\n",n,!!(p[4]&1),supplicant.group_cipher,len);
 #endif
             if(len==-5){mic_report_pending=rtl_tkip_guard_failure(&tkip_guard,now);
-                physical_message("TKIP Michael validation failed; notifying access point.");}
+                physical_message(WIFI_TR("TKIP Michael validation failed; notifying access point."));}
             if(len<8)return;
         }
         else{if(n<h+8||n-h>sizeof(plain))return;len=n-h;memcpy(plain,p+h,len);}
@@ -138,11 +139,11 @@ static void physical_packet(const uint8_t *p,unsigned n,uint32_t now){
             if(memcmp(plain+25,supplicant.anonce,32)){
                 uint8_t fresh[32];RtlAccessPoint *a=&app.scan.ap[app.selected];int e;
                 if(replay_order<=0)return;
-                if(++handshake_restarts>4){physical_failure("WPA2 failed; check password in CSV.");return;}
+                if(++handshake_restarts>4){physical_failure(WIFI_TR("WPA2 failed; check password in CSV."));return;}
                 e=rtl_nonce_next("mc0:/RTL_WIFI/SEED.DAT",fresh);
                 if(!e)e=rtl_supplicant_start(&supplicant,app.pending_pmk,a->bssid,physical_mac,fresh,a->rsn,a->rsn_length);
                 wipe(fresh,sizeof(fresh));
-                if(e){physical_failure("Cannot prepare secure seed for WPA2 retry.");return;}
+                if(e){physical_failure(WIFI_TR("Cannot prepare secure seed for WPA2 retry."));return;}
             }
         }
 #ifdef RTL_WIFI_PACKET_TRACE
@@ -153,11 +154,11 @@ static void physical_packet(const uint8_t *p,unsigned n,uint32_t now){
 #ifdef RTL_WIFI_PACKET_TRACE
         printf("WPA2_PACKET_RESULT result=%d state=%u\n",len,supplicant.state);
 #endif
-        if(len<0){physical_failure("WPA2 validation failed: password, MIC or replay counter.");return;}
+        if(len<0){physical_failure(WIFI_TR("WPA2 validation failed: password, MIC or replay counter."));return;}
         if(len){physical_header(queued.bytes,0x0108);memcpy(queued.bytes+24,"\xaa\xaa\x03\x00\x00\x00\x88\x8e",8);
             memcpy(queued.bytes+32,answer,len);queued.length=32+len;
             queued_kind=supplicant.state==RTL_WPA_WAIT_M4_TX?2:1;
-            physical_message(supplicant.state==RTL_WPA_WAIT_M3?"WPA2 M1 received; sending M2...":"WPA2 M3 verified; sending M4...");}
+            physical_message(supplicant.state==RTL_WPA_WAIT_M3?WIFI_TR("WPA2 M1 received; sending M2..."):WIFI_TR("WPA2 M3 verified; sending M4..."));}
         return;
     }
     if(!(p[1]&0x40)||supplicant.state!=RTL_WPA_ONLINE||len>1508)return;
@@ -167,20 +168,20 @@ static void physical_packet(const uint8_t *p,unsigned n,uint32_t now){
         if(result==2){uint8_t*target=app.static_ip[app.active_ap][0]&&!static_fallback?app.static_ip[app.active_ap]:dhcp.ip;unsigned i;int valid=1;uint32_t seed;memcpy(&seed,supplicant.snonce+8,4);
             for(i=0;i<4;i++)if((target[i]&dhcp.mask[i])!=(dhcp.ip[i]&dhcp.mask[i]))valid=0;
             if(!memcmp(target,dhcp.gateway,4)||!memcmp(target,dhcp.server,4))valid=0;
-            if(!valid){physical_failure("Static IP must be distinct and on the access-point subnet.");return;}
-            rtl_acd_start(&acd,physical_mac,target,now,seed);physical_phase=PH_PROBE;physical_message("Checking IP conflicts with ARP...");}
-        else if(result==-2)physical_failure("DHCP server rejected address request.");
+            if(!valid){physical_failure(WIFI_TR("Static IP must be distinct and on the access-point subnet."));return;}
+            rtl_acd_start(&acd,physical_mac,target,now,seed);physical_phase=PH_PROBE;physical_message(WIFI_TR("Checking IP conflicts with ARP..."));}
+        else if(result==-2)physical_failure(WIFI_TR("DHCP server rejected address request."));
     }else if(physical_phase==PH_PROBE||physical_phase==PH_ONLINE){RtlEchoEvent ev;
         if(rtl_acd_rx(&acd,answer,len)){
             if(physical_phase==PH_PROBE&&app.static_ip[app.active_ap][0]&&!static_fallback&&memcmp(acd.ip,dhcp.ip,4)){
-                uint32_t seed=acd.random;static_fallback=1;rtl_acd_start(&acd,physical_mac,dhcp.ip,now,seed);physical_message("Static IP in use. Checking DHCP address...");return;
+                uint32_t seed=acd.random;static_fallback=1;rtl_acd_start(&acd,physical_mac,dhcp.ip,now,seed);physical_message(WIFI_TR("Static IP in use. Checking DHCP address..."));return;
             }
             if(physical_phase==PH_PROBE&&!queued.length&&++address_conflicts<=2){uint8_t packet[400];uint32_t xid=dhcp.xid+1;int count=rtl_dhcp_decline(&dhcp,now,packet,sizeof(packet));
-                if(count>0){physical_ethernet_tx(packet,count,1);}rtl_dhcp_start(&dhcp,physical_mac,xid,now);dhcp.deadline=now+10000;physical_phase=PH_IP;static_fallback=1;physical_message("IP occupied; server notified. Waiting for another DHCP address...");return;
-            }physical_failure("IP is in use by another device. Choose a different IP.");return;
+                if(count>0){physical_ethernet_tx(packet,count,1);}rtl_dhcp_start(&dhcp,physical_mac,xid,now);dhcp.deadline=now+10000;physical_phase=PH_IP;static_fallback=1;physical_message(WIFI_TR("IP occupied; server notified. Waiting for another DHCP address..."));return;
+            }physical_failure(WIFI_TR("IP is in use by another device. Choose a different IP."));return;
         }
         if(physical_phase==PH_PROBE)return;
-        {int result=rtl_dhcp_rx(&dhcp,now,answer,len);if(result==-2){physical_failure("DHCP lease renewal rejected.");return;}if(result==3){memcpy(app.mask,dhcp.mask,4);memcpy(app.gateway,dhcp.gateway,4);physical_message("IP lease renewed; HTTP remains active.");}}
+        {int result=rtl_dhcp_rx(&dhcp,now,answer,len);if(result==-2){physical_failure(WIFI_TR("DHCP lease renewal rejected."));return;}if(result==3){memcpy(app.mask,dhcp.mask,4);memcpy(app.gateway,dhcp.gateway,4);physical_message(WIFI_TR("IP lease renewed; HTTP remains active."));}}
         {uint32_t before=http.requests;rtl_http_rx(&http,answer,len,now);if(http.requests!=before)snprintf(app.last_request,sizeof(app.last_request),"%s",http.last_request);}
         len=rtl_echo_reply(physical_mac,dhcp.ip,answer,len,plain,sizeof(plain),&ev);
         if(len>0){if(ev.kind==RTL_ECHO_ICMP){wifi_app_echo_rx(&app,physical_ticket,ev.remote,ev.identifier,ev.sequence);snprintf(app.last_request,sizeof(app.last_request),"PING %u.%u.%u.%u",ev.remote[0],ev.remote[1],ev.remote[2],ev.remote[3]);}
@@ -193,13 +194,13 @@ static void physical_sent(int result,unsigned kind,uint32_t now){
     if(!result){app.packets_tx++;app.bytes_tx+=physical_tx_bytes;}else app.packets_failed++;
     if(!result&&physical_phase>=PH_AUTH&&physical_phase<=PH_WPA)join_tx++;
     if(kind==3)wifi_app_echo_tx(&app,physical_ticket,result);
-    if(result){physical_failure("USB packet transmission failed.");return;}
-    if(kind==5){physical_failure("TKIP MIC protection: disconnected; wait 60 seconds.");return;}
+    if(result){physical_failure(WIFI_TR("USB packet transmission failed."));return;}
+    if(kind==5){physical_failure(WIFI_TR("TKIP MIC protection: disconnected; wait 60 seconds."));return;}
     if(kind==2){rtl_supplicant_tx_done(&supplicant,1);
         if(physical_phase==PH_WPA){uint32_t xid;memcpy(&xid,supplicant.snonce,4);
             wifi_app_authenticated(&app,physical_ticket);rtl_dhcp_start(&dhcp,physical_mac,xid,now);
             memcpy(dhcp.preferred,app.last_ip[app.active_ap],4);
-            physical_phase=PH_IP;physical_message("WPA2 complete. Sending DHCP address request...");}
+            physical_phase=PH_IP;physical_message(WIFI_TR("WPA2 complete. Sending DHCP address request..."));}
     }
     if(physical_phase==PH_AUTH||physical_phase==PH_ASSOC)physical_deadline=now+5000;
 }
@@ -207,16 +208,16 @@ static void physical_tick(uint32_t now){
     physical_now=now;
     wifi_files_tick(&file_service,now);
     if(physical_phase==PH_ONLINE){
-        if((int32_t)(now-physical_ap_seen)>60000){physical_failure("No access-point data for 60 seconds; reconnecting.");return;}
+        if((int32_t)(now-physical_ap_seen)>60000){physical_failure(WIFI_TR("No access-point data for 60 seconds; reconnecting."));return;}
         if(!queued.length&&(int32_t)(now-physical_keepalive_at)>=0&&dhcp.gateway[0]){uint8_t p[42]={0};physical_keepalive_at=now+15000;memset(p,255,6);memcpy(p+6,physical_mac,6);p[12]=8;p[13]=6;p[15]=1;p[16]=8;p[18]=6;p[19]=4;p[21]=1;memcpy(p+22,physical_mac,6);memcpy(p+28,dhcp.ip,4);memcpy(p+38,dhcp.gateway,4);physical_ethernet_tx(p,sizeof(p),1);}
     }
     if(physical_ticket!=app.ticket&&physical_phase!=PH_IDLE){physical_stop();return;}
-    if((physical_phase==PH_SCAN||physical_phase==PH_SCAN_SET)&&(int32_t)(now-physical_scan_limit)>=0){physical_phase=PH_IDLE;wifi_app_scan(&app,physical_ticket,&physical_scan,0);physical_message("Scan timed out; driving remains active. L2: rescan.");if(app.error_sink)app.error_sink(app.error_context,"SSID scan reached the 30-second limit.");return;}
+    if((physical_phase==PH_SCAN||physical_phase==PH_SCAN_SET)&&(int32_t)(now-physical_scan_limit)>=0){physical_phase=PH_IDLE;wifi_app_scan(&app,physical_ticket,&physical_scan,0);physical_message(WIFI_TR("Scan timed out; driving remains active. L2: rescan."));if(app.error_sink)app.error_sink(app.error_context,WIFI_TR("SSID scan reached the 30-second limit."));return;}
     if(mic_report_pending&&!queued.length&&supplicant.state==RTL_WPA_ONLINE){
         uint8_t frame[113];int len;unsigned kind=mic_report_pending==2?5:4;
         memcpy(frame,supplicant.ap,6);memcpy(frame+6,physical_mac,6);frame[12]=0x88;frame[13]=0x8e;
         len=rtl_supplicant_mic_report(&supplicant,frame+14,sizeof(frame)-14);
-        if(len<0||physical_ethernet_tx(frame,len+14,kind)){physical_failure("Cannot send TKIP MIC failure report.");return;}
+        if(len<0||physical_ethernet_tx(frame,len+14,kind)){physical_failure(WIFI_TR("Cannot send TKIP MIC failure report."));return;}
         mic_report_pending=0;return;
     }
     if(physical_phase==PH_SCAN&&(int32_t)(now-physical_deadline)>=0){
@@ -232,15 +233,15 @@ static void physical_tick(uint32_t now){
         }
         char detail[96];const char *reason=physical_phase==PH_AUTH?"AUTH":
             physical_phase==PH_ASSOC?"ASSOC":
-            supplicant.state==RTL_WPA_WAIT_M3?"No WPA2 M3; check CSV/password.":"No WPA2 M1 received (20 s).";
+            supplicant.state==RTL_WPA_WAIT_M3?WIFI_TR("No WPA2 M3; check CSV/password."):WIFI_TR("No WPA2 M1 received (20 s).");
         if(physical_phase==PH_AUTH||physical_phase==PH_ASSOC){
-            snprintf(detail,sizeof(detail),"No %s CH:%u USB-TX:%u RX:%u AP:%u AS:%u ME:%u AU:%u",reason,physical_channel,join_tx,join_rx,join_ap_rx,assoc_seen,assoc_to_us,auth_seen);
+            snprintf(detail,sizeof(detail),WIFI_TR("No %s CH:%u USB-TX:%u RX:%u AP:%u AS:%u ME:%u AU:%u"),reason,physical_channel,join_tx,join_rx,join_ap_rx,assoc_seen,assoc_to_us,auth_seen);
             physical_failure(detail);
         }else physical_failure(reason);return;}
     if((physical_phase==PH_IP||physical_phase==PH_ONLINE)&&!queued.length){uint8_t p[400];
         int len=rtl_dhcp_tx(&dhcp,now,p,sizeof(p));
-        if(len<0){physical_failure("DHCP timeout; no IP address received.");return;}
-        if(physical_phase==PH_ONLINE&&!rtl_dhcp_has_lease(&dhcp)){physical_failure("IP lease expired; reconnecting.");return;}
+        if(len<0){physical_failure(WIFI_TR("DHCP timeout; no IP address received."));return;}
+        if(physical_phase==PH_ONLINE&&!rtl_dhcp_has_lease(&dhcp)){physical_failure(WIFI_TR("IP lease expired; reconnecting."));return;}
         if(len>0)physical_ethernet_tx(p,len,1);
     }
     if(physical_phase==PH_ONLINE&&!queued.length){uint8_t packet[1514];int len=rtl_http_tx(&http,now,packet,sizeof(packet));if(len>0)physical_ethernet_tx(packet,len,1);}
@@ -249,6 +250,6 @@ static void physical_tick(uint32_t now){
             if(memcmp(dhcp.ip,acd.ip,4)){memcpy(dhcp.ip,acd.ip,4);dhcp.lease_seconds=0xffffffffu;}
             rtl_http_init(&http,physical_mac,dhcp.ip,seed);http.control=robot_web;http.control_context=&robot;http.files=file_service.io.stat?&file_service:0;physical_phase=PH_ONLINE;physical_ap_seen=now;physical_keepalive_at=now+15000;
             if(physical_http_setup){physical_http_setup(&http);}reconnect_pending=reconnect_attempts=0;
-            wifi_app_bound(&app,physical_ticket,dhcp.ip,dhcp.mask,dhcp.gateway);physical_message(static_fallback?"Static IP occupied; connected with DHCP. HTTP ready.":"Connected. HTTP server ready.");}}
+            wifi_app_bound(&app,physical_ticket,dhcp.ip,dhcp.mask,dhcp.gateway);physical_message(static_fallback?WIFI_TR("Static IP occupied; connected with DHCP. HTTP ready."):WIFI_TR("Connected. HTTP server ready."));}}
     }
 }

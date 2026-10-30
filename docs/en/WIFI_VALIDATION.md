@@ -1,4 +1,8 @@
-# Validation record — 0.4.30
+# Validation record
+
+Current 0.4.31 results: [bilingual interface and relay safety validation](WIFI_0431.md).
+
+## Historical publication baseline — 0.4.30
 
 Different kinds of evidence are deliberately separated below. A UI preview, emulated USB device or passing host test is not proof of physical RF or motor operation.
 

@@ -1,3 +1,4 @@
+#include "wifi_i18n.h"
 int program_test(void);
 int network_ui_test(void);
 int files_test(void);
@@ -44,7 +45,7 @@ static void radio_reset(void){unsigned i,j,a=0;uint8_t rom[128];
     for(i=0;i<16;i++){fuses[a++]=i<<4;for(j=0;j<8;j++)fuses[a++]=rom[i*8+j];}
     calls=fail_call=0;timeout=0;
 }
-int main(void){RtlSupplicant s;RtlDhcp d;RtlRadioReport r;RtlIo io={ctrl,0};uint8_t out[4096],copy[4096],before[32];unsigned i,total;int n;
+int main(void){wifi_language=1;RtlSupplicant s;RtlDhcp d;RtlRadioReport r;RtlIo io={ctrl,0};uint8_t out[4096],copy[4096],before[32];unsigned i,total;int n;
     memset(copy,0,sizeof(copy));copy[0]=0xb0;
     n=rtl_wire_tx(copy,30,out,sizeof(out),64);CHECK(n==62&&usb_packet_accepts(out,n,62)&&usb_packet_accepts(out,n,64));
     copy[0]=0;for(i=31;i<=1500;i++){n=rtl_wire_tx(copy,i,out,sizeof(out),64);CHECK(n>62);CHECK(!usb_packet_accepts(out,n,62));CHECK(usb_packet_accepts(out,n,64));}

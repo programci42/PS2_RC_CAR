@@ -14,6 +14,7 @@ int robot_web(void*ctx,const char*input,uint32_t now){RobotControl*r=ctx;unsigne
     if(r->seq_seen&&(int32_t)(seq-r->web_seq)<=0&&strcmp(cmd,"stop"))return -2;
     if(!r->seq_seen||(int32_t)(seq-r->web_seq)>0){r->web_seq=seq;r->seq_seen=1;}
     if(!strcmp(cmd,"stop")){r->web=0;r->timed=0;r->halt=1;r->desired=0;return 0;}
+    /* Stop is a sequence barrier, including delayed in-flight heartbeats. */
     if(!strcmp(cmd,"forward"))d=1;else if(!strcmp(cmd,"back"))d=2;else if(!strcmp(cmd,"left"))d=3;else if(!strcmp(cmd,"right"))d=4;else return -3;
     if(!r->ready)return -1;
     if(r->maintenance||r->system_locked)return -2;

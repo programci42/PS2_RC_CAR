@@ -1,6 +1,6 @@
 # HTTP API
 
-Use `http://<PS2-IP>/` on a trusted LAN. No TLS or full user authentication is implemented. Compatibility command values retain their established spelling; the interface labels are English.
+Use `http://<PS2-IP>/` on a trusted LAN. No TLS or full user authentication is implemented. Compatibility command values retain their established spelling; the interface supports Turkish (default) and English. The shared choice is persisted in dil.json.
 
 | GET request | Result |
 |---|---|
@@ -9,6 +9,8 @@ Use `http://<PS2-IP>/` on a trusted LAN. No TLS or full user authentication is i
 | `/devices/refresh` | Asynchronous descriptor refresh |
 | `/?usb=1` | Raw descriptors/interfaces/endpoints for device ID 1 |
 | `/network` | Link/radio state, auto USB checks and hub diagnostics |
+| `/language` | Shared TV/web language (`tr` or `en`) |
+| `/relay/diagnostics` | USB result/status, output uncertainty and reset/release state |
 | `/display` | Version, TV state and pad thread/DMA/init diagnostics |
 | `/?display=1` / `0` | Enable / disable TV drawing |
 | `/status` / `/telemetry` | Relay state / network, log, heap and battery estimates |
@@ -29,6 +31,7 @@ SELECT and gamepad takeover interrupt timed movement. Held web buttons use async
 | POST endpoint | Purpose / required header |
 |---|---|
 | `/drive/forward`, `/back`, `/left`, `/right`, `/stop` (each under `/drive/`) | Motion/heartbeat; `X-PS2-Control: 1` |
+| `/language` | Two-byte text body `tr` or `en`; `X-PS2-Control: 1`; save while stopped |
 | `/settings`, `/battery`, `/clock` | JSON button settings / battery parameters / UTC; `X-PS2-Control: 1` |
 | `/files/upload/begin?path=...&size=...` | Stage upload; `X-PS2-Files: 1` |
 | `/files/upload/chunk?offset=...` | Ordered binary chunk; `X-PS2-Files: 1` |
@@ -40,3 +43,5 @@ SELECT and gamepad takeover interrupt timed movement. Held web buttons use async
 | `/hub/power` | Explicit power request for eligible unpowered ports; `X-PS2-Exec: 1` |
 
 Headers and path protections prevent some accidental operations, not hostile users on the LAN. System/boot/seed/profile files and the running ELF have additional file protections. Native code can still crash the console.
+
+`/status` also includes `usbStatus`, `usbResult`, `usbControlResult`, `usbInterruptResult`, `resetPending`, `outputUncertain` and `releaseRequired`. In interrupt mode an unused control-path result of -1 is normal when the overall result and interrupt result are zero. OFF acknowledgement describes USB command delivery, not electrical contact continuity.

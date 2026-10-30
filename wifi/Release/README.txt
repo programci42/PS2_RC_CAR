@@ -1,4 +1,10 @@
-PS2 Wi-Fi Robot — English release
+PS2 Wi-Fi Robot — Turkish / English release 0.4.31
+
+Turkce varsayilandir. Web panelinde AYARLAR > Dil ile Turkce / English secin.
+Secim ELF klasorundeki dil.json dosyasina kaydedilir; TV ve web ayni dili kullanir.
+Turkish is the default. Settings > Language selects Turkish / English and saves
+the choice in dil.json beside the ELF. TV Turkish uses the debug font's ASCII
+character set. API keys, filenames and user source code remain compatible.
 
 Wifi.elf is the single current production executable. It embeds the USB host,
 RTL8192CU Wi-Fi, relay and storage modules. Do not install the test/tour ELFs.
@@ -31,8 +37,11 @@ The gamepad loop has higher priority than networking and file transfers.
 
 Use only on a trusted local network. HTTP file/command/native-code tools are not
 an Internet-facing security boundary. Battery values are estimates, not sensor
-measurements. Never energize all motor relays at once. Startup may briefly pulse
-only unused R1 (100 ms); this is skipped when R1 belongs to a motor group.
+measurements. Never energize all motor relays at once. Startup does not pulse
+any relay. Group changes remap existing gamepad relay actions as well as web
+movement. After a USB fault, release the controls before resuming. A failed USB
+OFF is not treated as confirmed OFF; the IOP retries stopping independently.
+Software cannot detect welded relay contacts or repair damaged hardware.
 
 See the repository README, architecture, API and validation documents for the
 hardware compatibility limits, source credits and known limitations.

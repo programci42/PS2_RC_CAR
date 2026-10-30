@@ -1,3 +1,4 @@
+#include "wifi_i18n.h"
 /* SPDX-License-Identifier: MIT
  * Native gamepad UI with physical USB/RF, WPA2, DHCP and ICMP backend.
  * Preview networks and leases are compiled only into the preview target. */
@@ -154,6 +155,7 @@ static void control_step(void){
     if(control_ready)drive_input(buttons,connected,now);
 }
 static void video_step(void){uint32_t now=millis(),buttons=control_buttons;int connected=control_connected;
+    static unsigned last_language=2;if(last_language!=wifi_language){last_language=wifi_language;display_reset_pending=1;app.dirty=1;}
     /* Separate owner for GIF/font state; pad priority remains above video. */
     {static uint32_t draw_at;if(controls.display&&(app.dirty||display_reset_pending)&&(uint32_t)(now-draw_at)>=100){draw_at=now;
       if(display_reset_pending){display_reset_pending=0;wifi_render_reset();}
@@ -199,11 +201,11 @@ static void try_known(void){
     result=n>0?wifi_known_select(csv,n,&app.scan,&selected,pmk):0;if(result==0&&app.has_profile){unsigned i;for(i=0;i<app.scan.count;i++)if(app.scan.ap[i].wpa2_ccmp_psk&&app.scan.ap[i].ssid_length==app.profile.ssid_length&&!memcmp(app.scan.ap[i].ssid,app.profile.ssid,app.profile.ssid_length)){selected=i;memcpy(pmk,app.profile.pmk,32);result=1;break;}}
     wipe(csv,sizeof(csv));
     if(result==1){app.selected=selected;app.state=WIFI_DERIVING;wifi_app_key(&app,app.ticket,pmk,0);
-        snprintf(app.message,sizeof(app.message),"Known network found; connecting automatically...");app.dirty=1;}
-    else physical_message(n<0?"Cannot read bilinenaglar.csv. Check file/card.":
-        n==0?"bilinenaglar.csv missing or empty. X: connect manually":
-        result<0?"Invalid CSV; use UTF-8 SSID;Password rows.":
-        "CSV loaded; no matching SSID (case sensitive). X: select");
+        snprintf(app.message,sizeof(app.message),WIFI_TR("Known network found; connecting automatically..."));app.dirty=1;}
+    else physical_message(n<0?WIFI_TR("Cannot read bilinenaglar.csv. Check file/card."):
+        n==0?WIFI_TR("bilinenaglar.csv missing or empty. X: connect manually"):
+        result<0?WIFI_TR("Invalid CSV; use UTF-8 SSID;Password rows."):
+        WIFI_TR("CSV loaded; no matching SSID (case sensitive). X: select"));
     wipe(pmk,sizeof(pmk));
 }
 static void join_selected_known(void){
@@ -213,7 +215,7 @@ static void join_selected_known(void){
     n=wifi_seed_read_known(csv,sizeof(csv));result=n>0?wifi_known_select(csv,n,&selected_scan,&selected,pmk):0;
     wipe(csv,sizeof(csv));
     if(result==1)wifi_app_key(&app,app.ticket,pmk,0);
-    else wifi_app_failure(&app,app.ticket,"Cannot read saved password. Press X to enter it.");
+    else wifi_app_failure(&app,app.ticket,WIFI_TR("Cannot read saved password. Press X to enter it."));
     wipe(pmk,sizeof(pmk));
 }
 static int request(unsigned int command,uint32_t now){
@@ -243,7 +245,7 @@ static void offline_probe_done(unsigned present,uint32_t now){
     /* Never restart an association, WPA/DHCP exchange, or password editor. */
     if(app.state!=WIFI_LIST&&app.state!=WIFI_ERROR)return;
     known_tried=0;app.ticket++;app.state=WIFI_SCANNING;app.actions=WIFI_DO_SCAN;
-    fast_scan=1;fast_count=0;physical_message("USB Wi-Fi found; scanning known networks...");
+    fast_scan=1;fast_count=0;physical_message(WIFI_TR("USB Wi-Fi found; scanning known networks..."));
 }
 static void usb_poll(uint32_t now){
     unsigned int done;
@@ -254,44 +256,44 @@ static void usb_poll(uint32_t now){
     if(recovery_wanted&&!pending){
         recovery_wanted=0;recovery_attempts++;recovery_at=now+30000;
         physical_stop();physical_radio_ready=0;known_tried=0;fast_scan=1;fast_count=0;
-        app.actions=0;wifi_app_disconnected(&app,"Re-detecting USB Wi-Fi; gamepad control remains available.");
+        app.actions=0;wifi_app_disconnected(&app,WIFI_TR("Re-detecting USB Wi-Fi; gamepad control remains available."));
         if(request(RTL_RPC_RECOVER,now))rpc_fault=1;
         return;
     }
     if(pending){
         if(SifCheckStatRpc(&client)){
-            if((uint32_t)(now-rpc_deadline)<0x80000000u){char detail[96];rpc_fault=1;physical_stop();snprintf(detail,sizeof(detail),"Wi-Fi RPC timeout: cmd=%u channel=%u; gamepad stays active.",pending,physical_channel);wifi_app_disconnected(&app,detail);}
+            if((uint32_t)(now-rpc_deadline)<0x80000000u){char detail[96];rpc_fault=1;physical_stop();snprintf(detail,sizeof(detail),WIFI_TR("Wi-Fi RPC timeout: cmd=%u channel=%u; gamepad stays active."),pending,physical_channel);wifi_app_disconnected(&app,detail);}
             return;
         }
         done=pending;pending=0;
         if(done==RTL_RPC_USB_CHECK){offline_probe_done(response.inventory.present,now);
         }else if(done==RTL_RPC_DEVICE){if(response.inventory.id<USB_INVENTORY_MAX)devices[response.inventory.id]=response.inventory;if(++devices_cursor>=USB_INVENTORY_MAX)devices_scanning=0;devices_due=now+100;
-        }else if(done==RTL_RPC_HUB_POWER){if(response.inventory.present){hub_last=response.inventory;snprintf(app.hub_message,sizeof(app.hub_message),"#%u cfg:%u rc:%d P1:%04X P2:%04X P3:%04X P4:%04X",hub_last.id,hub_last.config_total,hub_last.hub_result,usb_word(hub_last.hub_ports[0]),usb_word(hub_last.hub_ports[1]),usb_word(hub_last.hub_ports[2]),usb_word(hub_last.hub_ports[3]));app.dirty=1;}else if(hub_cursor==1){memset(&hub_last,0,sizeof(hub_last));snprintf(app.hub_message,sizeof(app.hub_message),"No hub detected; monitoring direct USB devices.");app.dirty=1;}hub_powered_ports|=response.inventory.driver_flags;hub_cursor=response.inventory.id+1;if(hub_cursor>=USB_INVENTORY_MAX){hub_cursor=1;hub_check_at=now+3000;}
+        }else if(done==RTL_RPC_HUB_POWER){if(response.inventory.present){hub_last=response.inventory;snprintf(app.hub_message,sizeof(app.hub_message),"#%u cfg:%u rc:%d P1:%04X P2:%04X P3:%04X P4:%04X",hub_last.id,hub_last.config_total,hub_last.hub_result,usb_word(hub_last.hub_ports[0]),usb_word(hub_last.hub_ports[1]),usb_word(hub_last.hub_ports[2]),usb_word(hub_last.hub_ports[3]));app.dirty=1;}else if(hub_cursor==1){memset(&hub_last,0,sizeof(hub_last));snprintf(app.hub_message,sizeof(app.hub_message),WIFI_TR("No hub detected; monitoring direct USB devices."));app.dirty=1;}hub_powered_ports|=response.inventory.driver_flags;hub_cursor=response.inventory.id+1;if(hub_cursor>=USB_INVENTORY_MAX){hub_cursor=1;hub_check_at=now+3000;}
         }else if(done==RTL_RPC_BOOT){
             if(response.boot.magic==RTL_BOOT_MAGIC&&!response.boot.result&&response.boot.stage==RTL_BOOT_COMPLETE){
                 app.boot_flags|=4;
-                physical_message("Firmware running. Loading radio settings...");
+                physical_message(WIFI_TR("Firmware running. Loading radio settings..."));
                 if(request(RTL_RPC_RADIO,now))wifi_app_driver(&app,-1);
                 return;
             }else wifi_app_driver(&app,-1);
         }else if(done==RTL_RPC_RADIO){
-            if(response.radio.result){char msg[96];snprintf(msg,sizeof(msg),"Radio: stage %lu code %ld reg %04lX ROM %02X%02X",(unsigned long)response.radio.stage,(long)response.radio.result,(unsigned long)response.radio.last_address,response.radio.rom[1],response.radio.rom[0]);wifi_app_driver(&app,-1);physical_message(msg);}
+            if(response.radio.result){char msg[96];snprintf(msg,sizeof(msg),WIFI_TR("Radio: stage %lu code %ld reg %04lX ROM %02X%02X"),(unsigned long)response.radio.stage,(long)response.radio.result,(unsigned long)response.radio.last_address,response.radio.rom[1],response.radio.rom[0]);wifi_app_driver(&app,-1);physical_message(msg);}
             else{app.boot_flags|=8;memcpy(physical_mac,response.radio.mac,6);physical_radio_ready=1;wifi_app_driver(&app,0);}
         }else if(done==RTL_RPC_CHANNEL){
-            if(response.wire.result)physical_failure("Cannot set radio channel.");
-            else if(physical_phase==PH_SCAN_SET){physical_phase=PH_SCAN;physical_deadline=now+350;char msg[96];snprintf(msg,sizeof(msg),"SSID scan: channel %u/13, networks found %u",physical_channel,physical_scan.count);physical_message(msg);}
+            if(response.wire.result)physical_failure(WIFI_TR("Cannot set radio channel."));
+            else if(physical_phase==PH_SCAN_SET){physical_phase=PH_SCAN;physical_deadline=now+350;char msg[96];snprintf(msg,sizeof(msg),WIFI_TR("SSID scan: channel %u/13, networks found %u"),physical_channel,physical_scan.count);physical_message(msg);}
             else if(physical_phase==PH_AUTH_SET)physical_auth(now);
         }else if(done==RTL_RPC_RX){
-            if(response.wire.result){physical_radio_ready=0;physical_stop();wifi_app_disconnected(&app,"USB receive error / device disconnected.");}
+            if(response.wire.result){physical_radio_ready=0;physical_stop();wifi_app_disconnected(&app,WIFI_TR("USB receive error / device disconnected."));}
             else if(response.wire.length&&response.wire.length<=RTL_WIRE_MAX){if(response.wire.quality&&response.wire.quality<=101&&app.linked&&response.wire.length>=24&&!memcmp(response.wire.bytes+10,app.scan.ap[app.active_ap].bssid,6)){app.signal_valid=1;app.signal_quality=response.wire.quality-1;}physical_packet(response.wire.bytes,response.wire.length,now);}
         }else if(done==RTL_RPC_TX){if(sending_ticket==app.ticket)physical_sent(response.wire.result,sending_kind,now);
-        }else if(response.usb.magic!=RTL_RPC_MAGIC){rpc_fault=1;wifi_app_disconnected(&app,"Invalid USB status response.");}
+        }else if(response.usb.magic!=RTL_RPC_MAGIC){rpc_fault=1;wifi_app_disconnected(&app,WIFI_TR("Invalid USB status response."));}
         else if(response.usb.state==RTL_READY){
-            if(app.state==WIFI_BOOT){app.boot_flags=3;physical_message("Wi-Fi attached. Driver ready; loading firmware...");usb_generation=response.usb.generation;if(request(RTL_RPC_BOOT,now))wifi_app_driver(&app,-1);return;}
-            if(usb_generation!=response.usb.generation){physical_stop();physical_radio_ready=0;app.boot_flags=1;wifi_app_disconnected(&app,"USB adapter reconnected.");}
-        }else if(app.state!=WIFI_BOOT){physical_stop();physical_radio_ready=0;app.boot_flags=1;wifi_app_disconnected(&app,"USB adapter removed. Connect the adapter.");}
-        else if(response.usb.state==RTL_WAITING&&strcmp(app.message,"Waiting for USB adapter. Connect the adapter.")){
-            snprintf(app.message,sizeof(app.message),"Waiting for USB adapter. Connect the adapter.");app.dirty=1;
+            if(app.state==WIFI_BOOT){app.boot_flags=3;physical_message(WIFI_TR("Wi-Fi attached. Driver ready; loading firmware..."));usb_generation=response.usb.generation;if(request(RTL_RPC_BOOT,now))wifi_app_driver(&app,-1);return;}
+            if(usb_generation!=response.usb.generation){physical_stop();physical_radio_ready=0;app.boot_flags=1;wifi_app_disconnected(&app,WIFI_TR("USB adapter reconnected."));}
+        }else if(app.state!=WIFI_BOOT){physical_stop();physical_radio_ready=0;app.boot_flags=1;wifi_app_disconnected(&app,WIFI_TR("USB adapter removed. Connect the adapter."));}
+        else if(response.usb.state==RTL_WAITING&&strcmp(app.message,WIFI_TR("Waiting for USB adapter. Connect the adapter."))){
+            snprintf(app.message,sizeof(app.message),WIFI_TR("Waiting for USB adapter. Connect the adapter."));app.dirty=1;
         }
     }
     physical_tick(now);
@@ -304,11 +306,11 @@ static void usb_poll(uint32_t now){
         if(found){physical_phase=PH_IDLE;fast_scan=0;wifi_app_scan(&app,app.ticket,&physical_scan,0);}}
     if(fast_scan&&app.state==WIFI_LIST)fast_scan=0;
     if(!pending&&physical_radio_ready){
-        if(queued.length){if(request(RTL_RPC_TX,now))physical_failure("Cannot start USB transmit request.");return;}
-        if(physical_phase==PH_SCAN_SET||physical_phase==PH_AUTH_SET){if(request(RTL_RPC_CHANNEL,now))physical_failure("Cannot start channel request.");return;}
-        if((int32_t)(now-poll_at)<0){if(request(RTL_RPC_RX,now))physical_failure("Cannot start USB receive request.");return;}
+        if(queued.length){if(request(RTL_RPC_TX,now))physical_failure(WIFI_TR("Cannot start USB transmit request."));return;}
+        if(physical_phase==PH_SCAN_SET||physical_phase==PH_AUTH_SET){if(request(RTL_RPC_CHANNEL,now))physical_failure(WIFI_TR("Cannot start channel request."));return;}
+        if((int32_t)(now-poll_at)<0){if(request(RTL_RPC_RX,now))physical_failure(WIFI_TR("Cannot start USB receive request."));return;}
     }
-    if(!pending&&(uint32_t)(now-poll_at)<0x80000000u){poll_at=now+1000;if(request(RTL_RPC_STATUS,now)){rpc_fault=1;wifi_app_disconnected(&app,"Cannot start USB communication request.");}}
+    if(!pending&&(uint32_t)(now-poll_at)<0x80000000u){poll_at=now+1000;if(request(RTL_RPC_STATUS,now)){rpc_fault=1;wifi_app_disconnected(&app,WIFI_TR("Cannot start USB communication request."));}}
 }
 static int init_usb(void){
     int tick;
@@ -339,7 +341,7 @@ static void preview_join(uint32_t now){
     uint8_t expected[32];RtlAccessPoint *ap=&app.scan.ap[app.selected];
     /* Public preview password. Not the user's private WiFi credential. */
     if(rtl_wpa_pmk((const uint8_t*)"password",8,ap->ssid,ap->ssid_length,expected)||memcmp(expected,app.pending_pmk,32)){
-        wifi_app_failure(&app,app.ticket,"PREVIEW: wrong password. Sample password: password");preview_phase=0;
+        wifi_app_failure(&app,app.ticket,WIFI_TR("PREVIEW: wrong password. Sample password: password"));preview_phase=0;
     }else{preview_at=now+900;preview_phase=1;}
     wipe(expected,sizeof(expected));
 }
@@ -355,7 +357,7 @@ static void preview_ping(void){
     if(app.state!=WIFI_ONLINE)return;
     if(rtl_echo_reply(mac,app.ip,ping_request,sizeof(ping_request),reply,sizeof(reply),&e)>0&&e.kind==RTL_ECHO_ICMP){
         wifi_app_echo_rx(&app,app.ticket,e.remote,e.identifier,e.sequence);wifi_app_echo_tx(&app,app.ticket,0);
-        snprintf(app.message,sizeof(app.message),"PREVIEW: synthetic ping processed; no real network packet.");app.dirty=1;
+        snprintf(app.message,sizeof(app.message),WIFI_TR("PREVIEW: synthetic ping processed; no real network packet."));app.dirty=1;
     }
 }
 #endif
@@ -389,16 +391,16 @@ static void actions(uint32_t now){
     }
     if(action&WIFI_DO_SAVE){
 #ifdef RTL_WIFI_UI_PREVIEW
-        snprintf(app.message,sizeof(app.message),"PREVIEW: saved in RAM; memory card unchanged.");app.dirty=1;
+        snprintf(app.message,sizeof(app.message),WIFI_TR("PREVIEW: saved in RAM; memory card unchanged."));app.dirty=1;
 #else
-        int result=-1;if(mc_ready){mkdir("mc0:/RTL_WIFI",0777);result=wifi_store_save("mc0:/RTL_WIFI",&app.profile);}wifi_app_saved(&app,result);if(result)runtime_error(&runtime,"Cannot save network profile to memory card.");
+        int result=-1;if(mc_ready){mkdir("mc0:/RTL_WIFI",0777);result=wifi_store_save("mc0:/RTL_WIFI",&app.profile);}wifi_app_saved(&app,result);if(result)runtime_error(&runtime,WIFI_TR("Cannot save network profile to memory card."));
         ip_save_pending=1;ip_save_index=app.active_ap;ip_save_after=now;
 #endif
     }
 #ifndef RTL_WIFI_UI_PREVIEW
     if(ip_save_pending&&!robot.applied&&!robot.desired&&!robot.pad&&!robot.web&&!file_service.upload.active&&!file_service.readers&&(int32_t)(now-ip_save_after)>=0){char path[256];unsigned i=ip_save_index;ip_save_pending=0;
-        if(wifi_runtime_channel(&runtime,app.scan.ap[i].channel)){runtime_error(&runtime,"Cannot save last Wi-Fi channel.");}physical_preferred_channel=runtime.last_channel;
-        if(wifi_seed_known_path(path,sizeof(path))||wifi_known_save(&file_service,path,app.scan.ap[i].ssid,app.scan.ap[i].ssid_length,app.last_ip[i],app.static_ip[i])){physical_message("Cannot save IP to CSV; connection remains active.");runtime_error(&runtime,app.message);}
+        if(wifi_runtime_channel(&runtime,app.scan.ap[i].channel)){runtime_error(&runtime,WIFI_TR("Cannot save last Wi-Fi channel."));}physical_preferred_channel=runtime.last_channel;
+        if(wifi_seed_known_path(path,sizeof(path))||wifi_known_save(&file_service,path,app.scan.ap[i].ssid,app.scan.ap[i].ssid_length,app.last_ip[i],app.static_ip[i])){physical_message(WIFI_TR("Cannot save IP to CSV; connection remains active."));runtime_error(&runtime,app.message);}
     }
 #endif
     (void)now;
@@ -444,8 +446,8 @@ int main(int argc,char **argv){
 #endif
     wifi_runtime_init(&runtime,&file_service,&robot,millis());wifi_runtime_clock(&runtime,wifi_clock_read(),millis());
     app.error_sink=runtime_error;app.error_context=&runtime;robot.error_sink=control_error_sink;robot.error_context=&runtime;physical_http_setup=setup_http;
-    control_ready=1;if(!control_running)runtime_error(&runtime,"Cannot start gamepad thread; using main-loop fallback.");
-    if(robot_module_error){runtime_error(&runtime,"Cannot load relay driver.");}if(app.state==WIFI_ERROR)runtime_error(&runtime,app.message);
+    control_ready=1;if(!control_running)runtime_error(&runtime,WIFI_TR("Cannot start gamepad thread; using main-loop fallback."));
+    if(robot_module_error){runtime_error(&runtime,WIFI_TR("Cannot load relay driver."));}if(app.state==WIFI_ERROR)runtime_error(&runtime,app.message);
 #ifndef RTL_WIFI_NATIVE_PAD_TEST
     known_cache_n=wifi_seed_read_known(known_cache,sizeof(known_cache));
 #endif
@@ -492,10 +494,10 @@ int main(int argc,char **argv){
 #ifndef RTL_WIFI_UI_PREVIEW
         {uint32_t menu=control_menu;
          if(control_reconnect){control_reconnect=0;known_tried=0;reconnect_pending=reconnect_attempts=0;physical_stop();
-          if(physical_radio_ready){wifi_app_failure(&app,app.ticket,"R2: searching for a known network...");if(!app.scan.count){app.ticket++;app.state=WIFI_SCANNING;app.actions=WIFI_DO_SCAN;fast_scan=1;fast_count=0;}}
-          else{recovery_wanted=1;recovery_attempts=0;physical_message("R2: preparing USB Wi-Fi; waiting for adapter...");}}
+          if(physical_radio_ready){wifi_app_failure(&app,app.ticket,WIFI_TR("R2: searching for a known network..."));if(!app.scan.count){app.ticket++;app.state=WIFI_SCANNING;app.actions=WIFI_DO_SCAN;fast_scan=1;fast_count=0;}}
+          else{recovery_wanted=1;recovery_attempts=0;physical_message(WIFI_TR("R2: preparing USB Wi-Fi; waiting for adapter..."));}}
          if(!drive_mode)wifi_app_input(&app,menu,now);
-         if(controls.restart){static uint32_t restart_at;if(!restart_at){restart_at=now;physical_stop();physical_message("Restarting PS2...");}robot.web=0;robot.halt=1;
+         if(controls.restart){static uint32_t restart_at;if(!restart_at){restart_at=now;physical_stop();physical_message(WIFI_TR("Restarting PS2..."));}robot.web=0;robot.halt=1;
              if((!robot.applied&&!robot_pending&&(uint32_t)(now-restart_at)>300)||(uint32_t)(now-restart_at)>2000){platform_stop_workers();if(pad_open){pad_open=0;padPortClose(0,0);}ExecOSD(0,0);}}
         }
 #else
@@ -506,13 +508,13 @@ int main(int argc,char **argv){
         previous_buttons=buttons;preview_poll(now);
 #else
         usb_poll(now);
-        {static unsigned last_transfer;unsigned active=file_service.upload.active||file_service.readers;static unsigned priority=64;if(priority!=(active?40u:64u)){priority=active?40:64;ChangeThreadPriority(GetThreadId(),priority);}if(last_transfer&&!file_service.upload.active&&wifi_files_native_flush())runtime_error(&runtime,"Cannot flush file write cache.");last_transfer=file_service.upload.active;}
+        {static unsigned last_transfer;unsigned active=file_service.upload.active||file_service.readers;static unsigned priority=64;if(priority!=(active?40u:64u)){priority=active?40:64;ChangeThreadPriority(GetThreadId(),priority);}if(last_transfer&&!file_service.upload.active&&wifi_files_native_flush())runtime_error(&runtime,WIFI_TR("Cannot flush file write cache."));last_transfer=file_service.upload.active;}
         offline_tick(now);
         try_known();
         if(reconnect_pending&&!app.linked&&app.state==WIFI_LIST&&(int32_t)(now-reconnect_at)>=0){unsigned i=app.active_ap;reconnect_pending=0;
             if(i<app.scan.count){app.selected=i;app.ticket++;if(app.known[i]&WIFI_KNOWN_CSV){app.state=WIFI_DERIVING;app.actions|=WIFI_DO_KNOWN;}
                 else if(app.has_profile&&app.profile.ssid_length==app.scan.ap[i].ssid_length&&!memcmp(app.profile.ssid,app.scan.ap[i].ssid,app.profile.ssid_length)){memcpy(app.pending_pmk,app.profile.pmk,32);app.state=WIFI_JOINING;app.actions|=WIFI_DO_JOIN;}
-                physical_message("Reconnecting to saved network automatically...");}}
+                physical_message(WIFI_TR("Reconnecting to saved network automatically..."));}}
         {static uint32_t memory_at;static uint8_t controller_ip[4];unsigned warn=runtime.log_warning,failed=runtime.log_failed;if(http.peer_valid&&memcmp(controller_ip,http.peer_ip,4)){memcpy(controller_ip,http.peer_ip,4);robot.web=0;robot.halt=1;}if((uint32_t)(now-memory_at)>=1000){struct mallinfo mem=mallinfo();memory_at=now;runtime.heap_bytes=mem.uordblks;runtime.ram_bytes=GetMemorySize();}
          job_tick(now);if(runtime.system_action&&job_state==2)job_stop(5);
          wifi_runtime_energy(&runtime,now);wifi_runtime_tick(&runtime,now);
@@ -527,12 +529,12 @@ int main(int argc,char **argv){
           if((int32_t)(now-runtime.system_due)>=0&&!robot.applied&&!robot_pending&&(robot_sync||(uint32_t)(now-runtime.system_requested)>2000)){
            if(!saved){runtime.battery_saved_at=now-300000u;wifi_runtime_tick(&runtime,now);saved=1;}
            if((uint32_t)(now-runtime.system_requested)>=250){unsigned action=runtime.system_action;uint32_t until=millis()+2000;while(pending&&SifCheckStatRpc(&client)&&(int32_t)(millis()-until)<0)DelayThread(1000);
-            if(!pending||!SifCheckStatRpc(&client)){if(action==2){physical_stop();platform_checkpoint("RESTART: stopping worker threads");platform_stop_workers();platform_checkpoint("RESTART: workers stopped; closing pad port");if(pad_open){pad_open=0;padPortClose(0,0);}platform_checkpoint("RESTART: pad closed; entering ExecOSD");ExecOSD(0,0);platform_checkpoint("RESTART FAILED: ExecOSD returned");runtime.system_action=0;robot.system_locked=0;saved=0;control_start();control_ready=1;recovery_wanted=1;controls.restart=0;}else{int status=0;platform_checkpoint("POWEROFF: stopping worker threads");platform_stop_workers();if(SifExecModuleBuffer(poweroff_irx,size_poweroff_irx,0,0,&status)>=0&&status>=0&&poweroffInit()>=0){physical_stop();platform_checkpoint("POWEROFF: module ready; requesting standby");poweroffShutdown();DelayThread(500000);}runtime_error(&runtime,"PS2 power-off service failed or shutdown did not complete.");runtime.system_action=0;robot.system_locked=0;saved=0;control_start();control_ready=1;}}
+            if(!pending||!SifCheckStatRpc(&client)){if(action==2){physical_stop();platform_checkpoint("RESTART: stopping worker threads");platform_stop_workers();platform_checkpoint("RESTART: workers stopped; closing pad port");if(pad_open){pad_open=0;padPortClose(0,0);}platform_checkpoint("RESTART: pad closed; entering ExecOSD");ExecOSD(0,0);platform_checkpoint("RESTART FAILED: ExecOSD returned");runtime.system_action=0;robot.system_locked=0;saved=0;control_start();control_ready=1;recovery_wanted=1;controls.restart=0;}else{int status=0;platform_checkpoint("POWEROFF: stopping worker threads");platform_stop_workers();if(SifExecModuleBuffer(poweroff_irx,size_poweroff_irx,0,0,&status)>=0&&status>=0&&poweroffInit()>=0){physical_stop();platform_checkpoint("POWEROFF: module ready; requesting standby");poweroffShutdown();DelayThread(500000);}runtime_error(&runtime,WIFI_TR("PS2 power-off service failed or shutdown did not complete."));runtime.system_action=0;robot.system_locked=0;saved=0;control_start();control_ready=1;}}
            }
           }
          }
          if(runtime.reload_pending){robot.halt=1;robot.web=0;if((uint32_t)(now-runtime.reload_at)>3000&&!robot.applied&&!robot_pending){unsigned i,transmitting=0;for(i=0;i<RTL_HTTP_CLIENTS;i++)if(http.client[i].state==3)transmitting=1;
-           if(!transmitting||(uint32_t)(now-runtime.reload_at)>15000){char path[WF_PATH];uint32_t deadline=millis()+2000;snprintf(path,sizeof(path),"%s",file_service.running);while(pending&&SifCheckStatRpc(&client)&&(int32_t)(millis()-deadline)<0)DelayThread(1000);if(!pending||!SifCheckStatRpc(&client)){physical_stop();platform_stop_workers();if(pad_open){pad_open=0;padPortClose(0,0);}LoadExecPS2(path,0,0);}else{runtime.reload_pending=0;runtime_error(&runtime,"Cannot reopen ELF: USB RPC is busy.");}}}}
+           if(!transmitting||(uint32_t)(now-runtime.reload_at)>15000){char path[WF_PATH];uint32_t deadline=millis()+2000;snprintf(path,sizeof(path),"%s",file_service.running);while(pending&&SifCheckStatRpc(&client)&&(int32_t)(millis()-deadline)<0)DelayThread(1000);if(!pending||!SifCheckStatRpc(&client)){physical_stop();platform_stop_workers();if(pad_open){pad_open=0;padPortClose(0,0);}LoadExecPS2(path,0,0);}else{runtime.reload_pending=0;runtime_error(&runtime,WIFI_TR("Cannot reopen ELF: USB RPC is busy."));}}}}
         }
 #endif
         {static uint32_t stats_at,rx,tx;if((uint32_t)(now-stats_at)>=1000){uint32_t elapsed=now-stats_at;app.rx_kbps=(unsigned)((uint64_t)(app.bytes_rx-rx)*8/elapsed);app.tx_kbps=(unsigned)((uint64_t)(app.bytes_tx-tx)*8/elapsed);stats_at=now;rx=app.bytes_rx;tx=app.bytes_tx;if(app.linked||app.transfer_active)app.dirty=1;
@@ -553,7 +555,7 @@ int main(int argc,char **argv){
 #endif
 #ifdef RTL_WIFI_PAD_TEST
 #ifdef RTL_WIFI_PAD_REJECT_TEST
-        if(app.state==WIFI_LIST&&!app.has_profile&&!app.ip[0]&&strstr(app.message,"wrong password")){
+        if(app.state==WIFI_LIST&&!app.has_profile&&!app.ip[0]&&strstr(app.message,WIFI_TR("wrong password"))){
             printf("WIFI_PAD_REJECT_TEST PASS no-profile-no-IP actual-pad-path auth=synthetic\n");return 0;
         }
 #else

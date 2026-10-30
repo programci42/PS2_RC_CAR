@@ -6,6 +6,7 @@ const char*const rp_names[RP_KEYS]={"CROSS","CIRCLE","SQUARE","TRIANGLE","UP","D
 const uint16_t rp_buttons[RP_KEYS]={0x4000,0x2000,0x8000,0x1000,0x10,0x40,0x80,0x20,0x400,0x800,0x100,0x200,2,4};
 const char*rp_action(unsigned i){static const char*const a[]={"stop","wait","on1","on2","on3","on4","on5","on6","on7","on8","off1","off2","off3","off4","off5","off6","off7","off8"};return i<18?a[i]:"";}
 int rp_mask_safe(unsigned m){unsigned i;if(m>255)return 0;for(i=0;i<4;i++)if(((m>>(i*2))&3)==3)return 0;return 1;}
+void rp_retarget(RpBinding*b,unsigned oldl,unsigned oldr,unsigned newl,unsigned newr){unsigned i;for(i=0;i<b->count;i++){unsigned op=b->op[i],relay,group,base;if(op<2||op>=18)continue;base=op<10?2:10;relay=op-base;group=relay/2;if(group==oldl)group=newl;else if(group==oldr)group=newr;b->op[i]=base+group*2+(relay&1);}}
 void rp_default(RobotProgram*p,unsigned l,unsigned r){unsigned i;memset(p,0,sizeof(*p));if(l>3||r>3||l==r){l=0;r=1;}p->config.left=l;p->config.right=r;
  for(i=0;i<4;i++){RpBinding*b=p->config.key+i;b->count=3;b->op[0]=0;b->op[1]=2+l*2+(i==2||i==3);b->op[2]=2+r*2+(i==1||i==3);}}
 typedef struct {const char*p,*end;} Json;

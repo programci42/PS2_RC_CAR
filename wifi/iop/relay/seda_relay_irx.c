@@ -51,6 +51,9 @@ static volatile unsigned watchdog_ticks,live_mask,watchdog_stopping;
 static int watchdog_mode=SEDA_RELAY_MODE_INT_PAYLOAD8;
 static unsigned missing_polls,rebinds;
 static volatile unsigned transfer_pending,configuration_pending;
+/* A failed OUT may still have reached the board. Keep a conservative mask
+   and stop independently of EE status polling until OFF is acknowledged. */
+static volatile unsigned relay_fault;
 static unsigned relay_generation,transfer_generation;
 
 static int seda_probe(int dev_id);
@@ -407,6 +410,7 @@ static int seda_disconnect(int dev_id)
         }
 
         /* Leave report DMA memory intact until completion or LDD retirement. */
+        if(live_mask||transfer_pending)relay_fault=1;
         relay_generation++;relay_dev.dev_id=-1;relay_dev.configured=0;
         relay_dev.control_ep = -1;
         relay_dev.interrupt_out_ep = -1;
@@ -447,7 +451,8 @@ static int seda_send_command(int command, int mode, int *control_result, int *in
     WaitSema(lock_sema);
     /* Recheck under the transport lock: a stale EE command must not turn
      * a relay back on while the IOP watchdog is shutting the board down. */
-    if(watchdog_stopping&&command<=8){SignalSema(lock_sema);return SEDA_RELAY_ERR_NOT_READY;}
+    if((watchdog_stopping||relay_fault)&&command<=8){SignalSema(lock_sema);return SEDA_RELAY_ERR_NOT_READY;}
+    if(command>=1&&command<=8&&(live_mask&(1u<<((command-1)^1)))){SignalSema(lock_sema);return SEDA_RELAY_ERR_BAD_COMMAND;}
 
     if (mode == SEDA_RELAY_MODE_AUTO) {
         fill_seda_payload_report(command);
@@ -587,19 +592,22 @@ static void *rpc_handler(int command, void *buffer, int size)
        finish enumerating its child after the first driver probe/configure.
        Never reset USBD or the Wi-Fi LDD to recover the relay. */
     if(command==SEDA_RELAY_RPC_GET_STATUS){
-        if(relay_dev.status==SEDA_RELAY_STATUS_READY)missing_polls=0;
-        else if(++missing_polls>=60&&rebinds<3&&!live_mask)command=SEDA_RELAY_RPC_RECOVER;
+        if(relay_dev.status==SEDA_RELAY_STATUS_READY&&!relay_fault){missing_polls=0;rebinds=0;}
+        else if(++missing_polls>=60&&rebinds<3&&(!live_mask||relay_fault))command=SEDA_RELAY_RPC_RECOVER;
     }
     switch (command) {
     case SEDA_RELAY_RPC_READY_SIGNAL:
-        if(live_mask||relay_dev.status!=SEDA_RELAY_STATUS_READY){packet->result=SEDA_RELAY_ERR_NOT_READY;break;}
+        /* Deprecated: startup must never energize outputs automatically. */
+        packet->result=SEDA_RELAY_ERR_NOT_READY;break;
+#if 0
         {int a,b,on,off;on=seda_send_command(1,packet->mode,&a,&b);if(!on)live_mask|=1;watchdog_ticks=0;
          DelayThread(100000);
          off=seda_send_command(17,packet->mode,&a,&b);if(!off)live_mask&=~1u;
          packet->result=on?on:off;packet->status=relay_dev.status;}
         break;
+#endif
     case SEDA_RELAY_RPC_RECOVER:
-        if(live_mask||relay_dev.status==SEDA_RELAY_STATUS_READY){packet->result=SEDA_RELAY_ERR_NOT_READY;packet->status=relay_dev.status;break;}
+        if((live_mask&&!relay_fault)||(relay_dev.status==SEDA_RELAY_STATUS_READY&&!relay_fault)){packet->result=SEDA_RELAY_ERR_NOT_READY;packet->status=relay_dev.status;break;}
         WaitSema(lock_sema);
         {int id=relay_dev.dev_id,r;if(id>=0)seda_disconnect(id);
          r=sceUsbdUnregisterLdd(&seda_driver);
@@ -611,16 +619,22 @@ static void *rpc_handler(int command, void *buffer, int size)
     case SEDA_RELAY_RPC_SEND_COMMAND:
         if ((packet->command<1 || packet->command>8) && (packet->command<17 || packet->command>24)) {packet->result=SEDA_RELAY_ERR_BAD_COMMAND;break;}
         if(watchdog_stopping&&packet->command<=8){packet->result=SEDA_RELAY_ERR_NOT_READY;break;}
+        /* Record possible ON before USB submission, never assume failed OFF. */
+        if(packet->command<=8){
+            if(relay_fault||live_mask&(1u<<((packet->command-1)^1))){packet->result=SEDA_RELAY_ERR_NOT_READY;break;}
+            live_mask|=1u<<(packet->command-1);
+        }
         packet->result = seda_send_command(packet->command, packet->mode, &packet->control_result, &packet->interrupt_result);
         if(packet->result==SEDA_RELAY_OK){watchdog_ticks=0;watchdog_mode=packet->mode;
             if(packet->command<=8)live_mask|=1u<<(packet->command-1);else live_mask&=~(1u<<(packet->command-17));}
-        packet->status = relay_dev.status;
+        else {relay_fault=1;watchdog_ticks=20;}
+        packet->status = relay_fault?SEDA_RELAY_STATUS_CONNECTED:relay_dev.status;
         break;
 
     case SEDA_RELAY_RPC_GET_STATUS:
         watchdog_ticks=0;
         packet->result = SEDA_RELAY_OK;
-        packet->status = relay_dev.status;
+        packet->status = relay_fault?SEDA_RELAY_STATUS_CONNECTED:relay_dev.status;
         packet->control_result = relay_dev.transfer_result;
         packet->interrupt_result = rebinds;
         break;
@@ -633,13 +647,15 @@ static void *rpc_handler(int command, void *buffer, int size)
 
     return buffer;
 }
-static void watchdog_thread(void *unused){unsigned i;int a,b;(void)unused;
-    for(;;){DelayThread(50000);if(watchdog_ticks<100)watchdog_ticks++;
-        if(watchdog_ticks>=20&&live_mask){watchdog_stopping=1;
+static void watchdog_step(void){unsigned i;int a,b;
+        if(watchdog_ticks<100)watchdog_ticks++;
+        if((relay_fault||watchdog_ticks>=20)&&live_mask){watchdog_stopping=1;
             for(i=0;i<8;i++)if(seda_send_command(17+i,watchdog_mode,&a,&b)==SEDA_RELAY_OK)live_mask&=~(1u<<i);
             watchdog_stopping=0;
         }
-    }
+        if(relay_fault&&!live_mask&&!transfer_pending&&!configuration_pending)relay_fault=0;
+}
+static void watchdog_thread(void *unused){(void)unused;for(;;){DelayThread(50000);watchdog_step();}
 }
 
 static void rpc_thread(void *arg)
