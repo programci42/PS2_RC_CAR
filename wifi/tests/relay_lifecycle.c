@@ -12,6 +12,8 @@ static int sceUsbdOpenPipe(int id,void*p){(void)p;return id;}
 static int sceUsbdClosePipe(int id){(void)id;return 0;}
 static int sceUsbdRegisterLdd(sceUsbdLddOps*d){registrations++;if(attached&&d->probe(1))d->connect(1);return 0;}
 static int sceUsbdUnregisterLdd(sceUsbdLddOps*d){(void)d;unregistrations++;return 0;}
+static unsigned port_resets,reset_supported;
+static int sceUsbdResetMatchedDevice(int id,unsigned vid,unsigned pid){assert(id==1&&vid==0x178e&&pid==0x07d9);if(!reset_supported)return -1;port_resets++;seda_disconnect(id);return 0;}
 static int sceUsbdControlTransfer(int ep,int type,int req,int value,int index,int n,void*p,void(*cb)(int,int,void*),void*a){(void)ep;(void)type;(void)req;(void)value;(void)index;(void)p;if(submit_fail)return -7;if(n){if(trace_n<32&&p)trace[trace_n++]=((u8*)p)[3];transfers++;if(timeout_mode){late=cb;cookie=a;return 0;}}cb(0,n,a);return 0;}
 static int sceUsbdInterruptTransfer(int ep,void*p,int n,void(*cb)(int,int,void*),void*a){return sceUsbdControlTransfer(ep,0,0,0,0,n,p,cb,a);}
 int main(void){SedaRelayRpcPacket p;unsigned tests=0;u8 owned[65];void*oldcookie;void(*oldcb)(int,int,void*);int before;
@@ -28,9 +30,16 @@ int main(void){SedaRelayRpcPacket p;unsigned tests=0;u8 owned[65];void*oldcookie
  seda_disconnect(1);submit_fail=1;rpc_handler(4,&p,sizeof(p));assert(relay_dev.status==1&&!configuration_pending);tests++;
  submit_fail=0;rpc_handler(4,&p,sizeof(p));assert(relay_dev.status==2);tests++;
  seda_disconnect(1);attached=0;rebinds=missing_polls=0;before=unregistrations;
- for(int i=0;i<300;i++){rpc_handler(2,&p,sizeof(p));}assert(rebinds==5&&unregistrations==before+5);tests++;
+ for(int i=0;i<300;i++){rpc_handler(2,&p,sizeof(p));}assert(rebinds==15&&unregistrations==before+15);tests++;
  attached=1;rpc_handler(4,&p,sizeof(p));p.command=7;p.mode=9;rpc_handler(1,&p,sizeof(p));assert(!p.result&&live_mask==64);p.command=8;before=transfers;rpc_handler(1,&p,sizeof(p));assert(p.result&&transfers==before&&live_mask==64);tests++;
  submit_fail=1;p.command=23;rpc_handler(1,&p,sizeof(p));assert(p.result&&live_mask==64&&relay_fault);rpc_handler(2,&p,sizeof(p));assert(p.status==1&&watchdog_ticks==0);tests++;
  submit_fail=0;watchdog_step();assert(!live_mask&&!relay_fault);tests++;
  p.command=8;rpc_handler(1,&p,sizeof(p));assert(live_mask==128);for(int i=0;i<20;i++)watchdog_step();assert(!live_mask);tests++;
+ /* The EE polls status every 250 ms during a held command. A healthy
+    transport must remain ON beyond one second without duplicate OUTs. */
+ p.command=7;rpc_handler(1,&p,sizeof(p));before=transfers;
+ for(int i=0;i<1200;i++){if(i%5==0)rpc_handler(2,&p,sizeof(p));watchdog_step();assert(live_mask==64&&!relay_fault&&transfers==before);}
+ p.command=23;rpc_handler(1,&p,sizeof(p));assert(!p.result&&!live_mask);tests++;
+ reset_supported=1;relay_fault=1;before=unregistrations;rpc_handler(4,&p,sizeof(p));assert(port_resets==1&&unregistrations==before&&relay_dev.dev_id<0);tests++;
+ assert(seda_probe(1));seda_connect(1);watchdog_step();assert(!live_mask&&!relay_fault);tests++;
  printf("RELAY_LIFECYCLE_TEST PASS %u cases actual-IOP-driver rebind-no-wifi-reset outputs-on-blocked timeout-buffer-owned stale-callback-rejected config-retry failed-OFF-keeps-mask status-polls-cannot-defeat-fault-watchdog IOP-opposite-interlock no-startup-pulse\n",tests);return 0;}

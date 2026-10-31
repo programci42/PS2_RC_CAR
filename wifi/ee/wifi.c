@@ -128,8 +128,10 @@ static unsigned char video_stack[16384] __attribute__((aligned(16)));
 static unsigned video_running;static int control_tid=-1,video_tid=-1;
 static unsigned control_draws;
 extern void *_gp;
-static char control_error_text[160];static volatile unsigned control_error_pending;
-static void control_error_sink(void*ctx,const char*s){(void)ctx;if(!control_error_pending){snprintf(control_error_text,sizeof(control_error_text),"%s",s);control_error_pending=1;}}
+/* One control-worker producer, one network/main consumer. Publish only after
+   filling a slot so several USB lifecycle events cannot overwrite each other. */
+static char control_error_text[16][160];static volatile unsigned control_error_write,control_error_read,control_error_dropped;
+static void control_error_sink(void*ctx,const char*s){unsigned w=control_error_write;(void)ctx;if(w-control_error_read>=16){control_error_dropped++;return;}snprintf(control_error_text[w%16],160,"%s",s);__asm__ volatile("sync":::"memory");control_error_write=w+1;}
 static void drive_input(uint32_t buttons,int connected,uint32_t now){unsigned d=0;
     static uint32_t last_buttons;unsigned old_ready=robot.ready,old_applied=robot.applied,old_owner=robot.owner;
     if(drive_mode&&last_buttons!=buttons)app.dirty=1;
@@ -446,6 +448,7 @@ int main(int argc,char **argv){
 #endif
     wifi_runtime_init(&runtime,&file_service,&robot,millis());wifi_runtime_clock(&runtime,wifi_clock_read(),millis());
     app.error_sink=runtime_error;app.error_context=&runtime;robot.error_sink=control_error_sink;robot.error_context=&runtime;physical_http_setup=setup_http;
+    runtime_error(&runtime,"BOOT: relay recovery enabled; R1 startup pulse once after all-OFF sync.");
     control_ready=1;if(!control_running)runtime_error(&runtime,WIFI_TR("Cannot start gamepad thread; using main-loop fallback."));
     if(robot_module_error){runtime_error(&runtime,WIFI_TR("Cannot load relay driver."));}if(app.state==WIFI_ERROR)runtime_error(&runtime,app.message);
 #ifndef RTL_WIFI_NATIVE_PAD_TEST
@@ -482,7 +485,8 @@ int main(int argc,char **argv){
         if(!control_running)control_step();
         buttons=control_buttons;connected=control_connected;
         if(!video_running)video_step();
-        if(control_error_pending){runtime_error(&runtime,control_error_text);control_error_pending=0;}
+        while(control_error_read!=control_error_write){unsigned r=control_error_read;__asm__ volatile("sync":::"memory");runtime_error(&runtime,control_error_text[r%16]);__asm__ volatile("sync":::"memory");control_error_read=r+1;}
+        {static unsigned dropped;if(dropped!=control_error_dropped){char s[96];dropped=control_error_dropped;snprintf(s,sizeof(s),"Relay log queue overflow: %u events dropped",dropped);runtime_error(&runtime,s);}}
 #else
         buttons=read_pad(&connected);
 #endif

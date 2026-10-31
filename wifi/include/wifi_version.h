@@ -1,1 +1,1 @@
-#define WIFI_VERSION "0.4.35"
+#define WIFI_VERSION "0.4.37"

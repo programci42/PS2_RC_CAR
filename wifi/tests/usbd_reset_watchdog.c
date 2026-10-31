@@ -30,4 +30,15 @@ int main(void){UsbdTimerCbStruct_t a={0},b={0};UsbdDevice_t ports[8];unsigned i,
  ohci.HcRhPortStatus[0]=BIT(PORT_CONNECTION)|BIT(PORT_ENABLE)|256;ohci.HcRhPortStatus[1]=BIT(PORT_CONNECTION)|BIT(PORT_ENABLE)|256;handleRhsc();assert(wifi.m_deviceStatus==DEVICE_RESETCOMPLETE&&!wifi.m_timer.m_isActive&&addresses==1);checkDelayedResets(&wifi);wifi.m_deviceStatus=DEVICE_READY;
  ticks(999);assert(resets==1);ticks(1);assert(resets==2&&bad.m_deviceStatus==DEVICE_RESETPENDING);
  flushPort(&bad);bad.m_parent=0;ticks(3000);assert(resets==2&&!pool.m_delayResets&&!bad.m_timer.m_isActive);
- printf("USBD_RESET_WATCHDOG_TEST PASS actual vendor timer/reset code: 8 ports x 8 enumeration orders, port-8 bitmap, failed-hub releases global lock, WiFi root reset proceeds, port retry, success cancels watchdog, unplug cancels, timer deadlines preserved\n");return 0;}
+ /* Observed live: connected root port, ENABLE lost, stale READY LDD.
+    Re-enumerate only that port and leave the healthy Wi-Fi root untouched. */
+ reset();root.m_childListStart=&bad;bad.m_parent=&root;bad.m_next=&wifi;bad.m_attachedToPortNo=1;bad.m_deviceStatus=DEVICE_READY;
+ wifi.m_parent=&root;wifi.m_attachedToPortNo=2;wifi.m_deviceStatus=DEVICE_READY;
+ ohci.HcRhPortStatus[0]=257;ohci.HcRhPortStatus[1]=259;handleRhsc();
+ assert(bad.m_deviceStatus==DEVICE_CONNECTED&&bad.m_timer.m_isActive&&wifi.m_deviceStatus==DEVICE_READY&&!wifi.m_timer.m_isActive);
+ ticks(500);assert(bad.m_deviceStatus==DEVICE_RESETPENDING&&pool.m_delayResets);
+ ohci.HcRhPortStatus[0]=257;ohci.HcRhPortStatus[1]=259;handleRhsc();assert(!addresses&&bad.m_deviceStatus==DEVICE_RESETPENDING);
+ ohci.HcRhPortStatus[0]=259;ohci.HcRhPortStatus[1]=259;handleRhsc();assert(addresses==1&&bad.m_deviceStatus==DEVICE_RESETCOMPLETE);
+ checkDelayedResets(&bad);bad.m_deviceStatus=DEVICE_READY;
+ for(i=0;i<2;i++){ohci.HcRhPortStatus[0]=257|BIT(i?PORT_RESET:PORT_OVER_CURRENT);ohci.HcRhPortStatus[1]=259;handleRhsc();assert(bad.m_deviceStatus==DEVICE_READY&&!bad.m_timer.m_isActive);}
+ printf("USBD_RESET_WATCHDOG_TEST PASS actual vendor timer/reset code: root-disabled recovery, healthy peer preserved, no addressing disabled root, reset/overcurrent guards, 8 ports x 8 enumeration orders, timer watchdog\n");return 0;}

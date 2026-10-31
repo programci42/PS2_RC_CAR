@@ -1,12 +1,4 @@
-#ifndef ROLE_IRX_IMPORTS_H
-#define ROLE_IRX_IMPORTS_H
-
-#include <irx.h>
-#include <stdio.h>
-#include <sysclib.h>
-#include <thbase.h>
+#include "../irx_imports.h"
 #include <thsemap.h>
-#include <sifcmd.h>
-#include <usbd.h>
-
-#endif
+int sceUsbdResetMatchedDevice(int,unsigned,unsigned);
+#define I_sceUsbdResetMatchedDevice DECLARE_IMPORT(20, sceUsbdResetMatchedDevice)

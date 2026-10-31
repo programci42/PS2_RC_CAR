@@ -12,6 +12,7 @@
 #include <sifrpc.h>
 #include <usbd.h>
 #include <usbd_macro.h>
+int sceUsbdResetMatchedDevice(int,unsigned,unsigned);
 #endif
 
 #include "seda_relay_rpc.h"
@@ -593,7 +594,7 @@ static void *rpc_handler(int command, void *buffer, int size)
        Never reset USBD or the Wi-Fi LDD to recover the relay. */
     if(command==SEDA_RELAY_RPC_GET_STATUS){
         if(relay_dev.status==SEDA_RELAY_STATUS_READY&&!relay_fault){missing_polls=0;rebinds=0;}
-        else if(++missing_polls>=60&&(!live_mask||relay_fault))command=SEDA_RELAY_RPC_RECOVER;
+        else if(++missing_polls>=20&&(!live_mask||relay_fault))command=SEDA_RELAY_RPC_RECOVER;
     }
     switch (command) {
     case SEDA_RELAY_RPC_READY_SIGNAL:
@@ -609,7 +610,18 @@ static void *rpc_handler(int command, void *buffer, int size)
     case SEDA_RELAY_RPC_RECOVER:
         if((live_mask&&!relay_fault)||(relay_dev.status==SEDA_RELAY_STATUS_READY&&!relay_fault)){packet->result=SEDA_RELAY_ERR_NOT_READY;packet->status=relay_dev.status;break;}
         WaitSema(lock_sema);
-        {int id=relay_dev.dev_id,r;if(id>=0)seda_disconnect(id);
+        {int id=relay_dev.dev_id,r;
+         /* Endpoint retirement precedes buffer reuse. This does not power
+            cycle/reset the shared controller, hub or Wi-Fi device. */
+         if(id>=0 && sceUsbdResetMatchedDevice(id,target_vid,target_pid)==USB_RC_OK){
+             /* USBD removes endpoint DMA structures on a 200 ms timer.
+                Do not reuse the report buffer until retirement completes. */
+             DelayThread(250000);
+             transfer_pending=configuration_pending=0;transfer_generation=++relay_generation;clear_done_sema();
+             missing_polls=0;rebinds++;packet->result=0;packet->status=relay_dev.status;
+             packet->control_result=0;packet->interrupt_result=rebinds;SignalSema(lock_sema);break;
+         }
+         if(id>=0)seda_disconnect(id);
          r=sceUsbdUnregisterLdd(&seda_driver);
          if(r==USB_RC_OK){DelayThread(1000000);transfer_pending=configuration_pending=0;transfer_generation=++relay_generation;clear_done_sema();seda_driver.next=seda_driver.prev=NULL;r=sceUsbdRegisterLdd(&seda_driver);}
          missing_polls=0;rebinds++;packet->result=r;packet->status=relay_dev.status;

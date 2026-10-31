@@ -36,4 +36,5 @@ I_sceUsbdSetPrivateData
 I_sceUsbdOpenPipe
 I_sceUsbdClosePipe
 I_sceUsbdTransferPipe
+I_sceUsbdResetMatchedDevice
 usbd_IMPORTS_end

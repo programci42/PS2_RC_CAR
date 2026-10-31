@@ -16,7 +16,7 @@ static RobotControl robot;
 static WifiFiles file_service;
 static struct {unsigned relay_ready,owner,mask,left,right,file_blocked;} http;
 unsigned char seda_relay_irx[1];unsigned int size_seda_relay_irx=1;
-static unsigned card=2,mask=255,calls,checks,pending,now,off_time[8],fail_next,binds;
+static unsigned card=2,mask=255,calls,checks,pending,now,off_time[8],fail_next,binds,writes,r1_ons,r1_on_at;
 static SedaRelayRpcPacket*reply;
 static int SifExecModuleBuffer(void*a,unsigned b,int c,void*d,int*e){(void)a;(void)b;(void)c;(void)d;*e=0;return 1;}
 static int SifBindRpc(SifRpcClientData_t*c,unsigned id,int mode){(void)mode;if(id!=SEDA_RELAY_RPC_ID)exit(1);c->server=++binds>1;return 0;}
@@ -25,9 +25,9 @@ static int SifCallRpc(SifRpcClientData_t*c,unsigned cmd,int mode,void*send,unsig
  (void)c;(void)mode;(void)send;(void)ns;(void)nr;(void)cb;(void)arg;U(!pending);pending=cmd;reply=recv;calls++;return 0;}
 static int SifCheckStatRpc(SifRpcClientData_t*c){unsigned i;(void)c;
  if(pending){reply->status=card;reply->result=fail_next?-2:0;
-  if(pending==1&&!fail_next){unsigned k=reply->command;U(reply->mode==9);
+  if(pending==1&&!fail_next){unsigned k=reply->command;writes++;U(reply->mode==9);
    if(k>=17&&k<=24){mask&=~(1u<<(k-17));off_time[k-17]=now;}
-   else {U(k>=1&&k<=8);U(now-off_time[k-1]>=robot.deadms);mask|=1u<<(k-1);}
+   else {U(k>=1&&k<=8);U(now-off_time[k-1]>=robot.deadms);mask|=1u<<(k-1);if(k==1){r1_ons++;r1_on_at=now;}}
    for(i=0;i<4;i++)U(((mask>>(2*i))&3)!=3||k>=17);
   }pending=0;fail_next=0;
  }return 0;
@@ -35,7 +35,7 @@ static int SifCheckStatRpc(SifRpcClientData_t*c){unsigned i;(void)c;
 #include "../ee/robot_usb.h"
 static void run(unsigned pad,unsigned connected,unsigned net,unsigned ms){unsigned end=now+ms;for(;now<end;now+=10)robot_usb_tick(pad,connected,net,now);}
 static void run_program(RobotProgram*p,unsigned buttons,unsigned ms){unsigned end=now+ms;for(;now<end;now+=10){robot.program_mask=rp_tick(p,buttons,!robot.halt,robot.applied,robot_sync&&!robot_pending&&!robot_reset,now);robot_usb_tick(buttons,1,1,now);}}
-int main(void){unsigned before;robot_usb_init(0);run(0,0,1,1000);U(binds>=2&&robot.ready&&!robot_reset&&!mask);
+int main(void){unsigned before;robot_usb_init(0);run(0,0,1,1000);U(binds>=2&&robot.ready&&!robot_reset&&!mask);U(robot_startup_pulse==4&&r1_ons==1&&off_time[0]-r1_on_at>=100);
  U(robot_web(&robot,"forward?s=1",now)==0);run(0,0,1,300);U(mask==5);
  run(ROBOT_BACK,1,1,500);U(mask==10&&!robot.web);
  U(robot_web(&robot,"stop?s=2",now)==0);run(ROBOT_BACK,1,1,300);U(!mask);
@@ -52,5 +52,14 @@ int main(void){unsigned before;robot_usb_init(0);run(0,0,1,1000);U(binds>=2&&rob
  U(!robot_web(&robot,"test128?s=5",now));run(0,1,1,400);U(mask==128);
  U(!robot_web(&robot,"stop?s=6",now));run(0,1,1,300);U(!mask);
  U(!robot_web(&robot,"test64?s=7",now));run(0,1,1,300);U(mask==64);run(0,1,1,1300);U(!mask);
- printf("ROBOT_USB_TEST PASS checks=%u actual-EE-scheduler RPC=mock startup-off-break-before-make-pad-web-disconnect-fault-custom-sequence-wait-release all-face-buttons failed-OFF-preserves-mask requires-release\n",checks);return 0;
+ /* A held input must not create periodic USB ON writes or a one-second
+    transition. Exercise both real scheduler paths for a full minute. */
+ {RobotProgram p;unsigned start;rp_default(&p,3,1);run_program(&p,0x4000,300);U(mask==68);start=writes;
+  run_program(&p,0x4000,60000);U(mask==68&&writes==start);run_program(&p,0,300);U(!mask);}
+ {unsigned start,seq=100;robot.program_mode=0;run(ROBOT_FORWARD,1,1,300);U(mask==68);start=writes;
+  run(ROBOT_FORWARD,1,1,60000);U(mask==68&&writes==start);run(0,1,1,300);U(!mask);
+  U(!robot_web(&robot,"forward?s=100",now));run(0,1,1,300);U(mask==68);start=writes;
+  for(unsigned k=0;k<200;k++){char cmd[40];snprintf(cmd,sizeof(cmd),"forward?s=%u",++seq);U(!robot_web(&robot,cmd,now));run(0,1,1,300);U(mask==68&&writes==start);}
+  U(!robot_web(&robot,"stop?s=1000",now));run(0,1,1,300);U(!mask);}
+ printf("ROBOT_USB_TEST PASS checks=%u actual-EE-scheduler RPC=mock startup-off-break-before-make-pad-web-disconnect-fault-custom-sequence-wait-release all-face-buttons failed-OFF-preserves-mask requires-release 60s-pad-and-web-hold-no-redundant-USB-ON release-stops\n",checks);return 0;
 }

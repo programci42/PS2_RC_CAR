@@ -48,6 +48,7 @@ static int sceUsbdOpenPipe(int,void*);
 static int sceUsbdClosePipe(int);
 static int sceUsbdRegisterLdd(sceUsbdLddOps*);
 static int sceUsbdUnregisterLdd(sceUsbdLddOps*);
+static int sceUsbdResetMatchedDevice(int,unsigned,unsigned);
 static int sceUsbdControlTransfer(int,int,int,int,int,int,void*,void(*)(int,int,void*),void*);
 static int sceUsbdInterruptTransfer(int,void*,int,void(*)(int,int,void*),void*);
 #define sceUsbdSetConfiguration(ep,c,cb,arg) sceUsbdControlTransfer(ep,0,9,c,0,0,0,cb,arg)

@@ -9,6 +9,26 @@
 */
 
 #include "usbdpriv.h"
+#include "target_reset.h"
+
+/* Local extension 20: retire/re-enumerate one identity-checked leaf only. */
+int sceUsbdResetMatchedDevice(int id,unsigned vid,unsigned pid)
+{
+    int result;void *oldgp;
+#if USE_GP_REGISTER
+    oldgp=SetModuleGP();
+#else
+    oldgp=NULL;
+#endif
+    if(usbdLock()) result=USB_RC_BADCONTEXT;
+    else {result=resetMatchedDevice(id,vid,pid);usbdUnlock();}
+#if USE_GP_REGISTER
+    SetGP(oldgp);
+#else
+    (void)oldgp;
+#endif
+    return result;
+}
 
 /* Local diagnostic extension, export 19. Read-only snapshot under USBD lock.
  * Unlike a native EE job, this runs in the IOP context that owns OHCI. */

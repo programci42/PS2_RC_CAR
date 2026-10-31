@@ -101,6 +101,13 @@ void handleRhsc(void)
 		{
 			if ( port->m_deviceStatus >= (unsigned int)DEVICE_CONNECTED && ((status & BIT(C_PORT_CONNECTION)) != 0) )
 				flushPort(port);
+            /* A root port can lose ENABLE without a disconnect (e.g. USB
+             * transaction errors). Retire its stale LDD/endpoints before
+             * re-enumerating, just as for disabled downstream hub ports.
+             * Never reset a port during reset or an overcurrent condition. */
+            if (port->m_deviceStatus >= DEVICE_RESETCOMPLETE &&
+                !(status & (BIT(PORT_ENABLE) | BIT(PORT_RESET) | BIT(PORT_OVER_CURRENT))))
+                flushPort(port);
 			if ( port->m_deviceStatus == DEVICE_NOTCONNECTED )
 			{
 				port->m_deviceStatus = DEVICE_CONNECTED;
@@ -108,7 +115,8 @@ void handleRhsc(void)
 			}
 			else if ( port->m_deviceStatus == DEVICE_RESETPENDING )
 			{
-				if ( (status & BIT(PORT_RESET)) == 0 )
+				if ( (status & (BIT(PORT_RESET) | BIT(PORT_OVER_CURRENT))) == 0 &&
+                     (status & BIT(PORT_ENABLE)) != 0 )
 				{
 					port->m_deviceStatus = DEVICE_RESETCOMPLETE;
                     if (port->m_timer.m_isActive) cancelTimerCallback(&port->m_timer);

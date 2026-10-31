@@ -5,6 +5,7 @@ IOP_OBJS_DIR = obj/
 $(addprefix $(IOP_OBJS_DIR),$(IOP_OBJS)): usbdpriv.h
 $(IOP_OBJS_DIR)hub.o: hub_ports.h hub_runtime.h
 $(IOP_OBJS_DIR)device.o: enum_start.h
+$(IOP_OBJS_DIR)usbd_api.o: target_reset.h
 all: $(IOP_BIN)
 include $(PS2SDK)/samples/Makefile.pref
 include $(PS2SDK)/samples/Makefile.iopglobal

@@ -8,8 +8,12 @@ extern unsigned char seda_relay_irx[];extern unsigned int size_seda_relay_irx;
 static unsigned robot_bound,robot_pending,robot_index,robot_reset=1,robot_last_pad,robot_sync,robot_fault_reported,robot_module_error;
 static unsigned robot_need_release=1;
 static volatile unsigned robot_recover_wanted;
-/* No automatic relay pulse: this vehicle has reported damaged contacts. */
+/* User confirmed R1 is physically unused: pulse once per ELF start, not
+   on USB reconnection. All eight OFFs must be acknowledged first. */
+static unsigned robot_startup_pulse=1,robot_seen_ready=~0u,robot_recovery_count;
+static uint32_t robot_pulse_until;
 static void robot_note_error(const char*s){if(robot.error_sink)robot.error_sink(robot.error_context,s);}
+static void robot_log_packet(const char*event){char s[160];snprintf(s,sizeof(s),"Relay %s: cmd=%d mode=%d result=%d status=%d ctrl=%d int=%d",event,robot_packet.command,robot_packet.mode,robot_packet.result,robot_packet.status,robot_packet.control_result,robot_packet.interrupt_result);robot_note_error(s);}
 static uint32_t robot_poll_at,robot_deadline;
 static void robot_usb_init(int load_saved){int result=0;robot_init(&robot);
     /* role.elf's saved group/mode/dead-time settings, read-only. */
@@ -35,6 +39,7 @@ static void robot_usb_tick(unsigned pad,unsigned connected,unsigned online,uint3
     if(robot_need_release){robot.halt=1;robot.web=robot.timed=0;if(!pad&&robot.ready&&!robot_reset)robot_need_release=0;}
     if(robot_last_pad&&!connected){robot.web=robot.timed=0;robot.halt=1;}robot_last_pad=connected;
     robot.maintenance=wifi_files_busy(&file_service);robot_tick(&robot,pad,connected,online,now);
+    if(robot_startup_pulse<4){robot.desired=robot.web=robot.timed=0;robot.halt=robot_need_release=1;}
     robot.usb_reset=robot_reset;http.relay_ready=robot.ready&&!robot_reset;http.owner=robot.owner;http.mask=robot.applied;http.left=robot.left;http.right=robot.right;
     http.file_blocked=robot.applied||robot.desired||robot.web||robot.pad;
     if(robot_pending){
@@ -42,10 +47,13 @@ static void robot_usb_tick(unsigned pad,unsigned connected,unsigned online,uint3
         if(robot_pending==3){robot_bound=robot_rpc.server!=0;robot_pending=0;robot_poll_at=now+250;return;}
         robot.usb_result=robot_packet.result;robot.usb_control=robot_packet.control_result;robot.usb_interrupt=robot_packet.interrupt_result;robot.usb_status=robot_packet.status;
         if(robot_pending==SEDA_RELAY_RPC_SEND_COMMAND){
-            if(robot_packet.result){robot.output_uncertain=1;robot_need_release=1;if(!robot_fault_reported)robot_note_error(WIFI_TR("Relay command USB transfer failed; outputs uncertain, release controls."));robot_fault_reported=1;robot.ready=0;robot.halt=1;robot.web=robot.timed=robot.desired=0;robot_reset=1;robot_index=0;robot_sync=0;}
-            else if(robot_packet.command>=17){robot.applied&=~(1u<<(robot_packet.command-17));robot.off_at=now;if(robot_reset&&++robot_index==8){robot_reset=0;robot_index=0;robot.output_uncertain=0;}}
-            else robot.applied|=1u<<(robot_packet.command-1);
+            if(robot_packet.result){robot_log_packet("USB failure; outputs uncertain");if(robot_startup_pulse==2||robot_startup_pulse==3)robot_startup_pulse=4;robot.output_uncertain=1;robot_need_release=1;robot_fault_reported=1;robot.ready=0;robot.halt=1;robot.web=robot.timed=robot.desired=0;robot_reset=1;robot_index=0;robot_sync=0;}
+            else if(robot_packet.command>=17){robot.applied&=~(1u<<(robot_packet.command-17));robot.off_at=now;if(robot_reset&&++robot_index==8){robot_reset=0;robot_index=0;robot.output_uncertain=0;robot_note_error("Relay: all eight OFF commands acknowledged; release controls before driving.");}
+                if(robot_startup_pulse==3&&robot_packet.command==17){robot_startup_pulse=4;robot_note_error("Relay startup: R1 OFF acknowledged; one-shot completed.");}}
+            else {robot.applied|=1u<<(robot_packet.command-1);if(robot_startup_pulse==1&&robot_packet.command==1){robot_startup_pulse=2;robot_pulse_until=now+100;robot_note_error("Relay startup: R1 ON acknowledged; waiting 100 ms.");}}
         }else {robot.ready=robot_packet.status==SEDA_RELAY_STATUS_READY;
+            if((unsigned)robot_packet.status!=robot_seen_ready){robot_seen_ready=robot_packet.status;robot_log_packet(robot.ready?"detected/configured; clearing outputs":"connection lost/not ready");}
+            if(robot_packet.interrupt_result>=0&&(unsigned)robot_packet.interrupt_result!=robot_recovery_count){robot_recovery_count=robot_packet.interrupt_result;if(robot_recovery_count)robot_log_packet("port recovery attempt");}
             if(!robot.ready){robot_need_release=1;robot.halt=1;robot.web=robot.timed=robot.desired=0;robot_reset=1;robot_index=0;robot_sync=0;}}
         robot_pending=0;
     }
@@ -59,6 +67,10 @@ static void robot_usb_tick(unsigned pad,unsigned connected,unsigned online,uint3
     memset(&robot_packet,0,sizeof(robot_packet));robot_packet.mode=robot.mode;
     /* Reset/off transitions always finish before any new relay is enabled. */
     if(robot_reset){robot_packet.command=17+robot_index;robot_rpc_start(1,now);return;}
+    if(robot_startup_pulse<4){
+        if(robot_startup_pulse==1){if((uint32_t)(now-robot.off_at)<100)return;robot_packet.command=1;robot_rpc_start(1,now);return;}
+        if(robot_startup_pulse==2&&(int32_t)(now-robot_pulse_until)>=0){robot_startup_pulse=3;robot_packet.command=17;robot_rpc_start(1,now);}return;
+    }
     for(i=0;i<8;i++)if((robot.applied&~robot.desired)&(1u<<i)){robot_packet.command=17+i;robot_rpc_start(1,now);return;}
     if((uint32_t)(now-robot.off_at)<(robot.deadms<100?100:robot.deadms))return;
     for(i=0;i<8;i++)if((robot.desired&~robot.applied)&(1u<<i)){robot_packet.command=1+i;robot_rpc_start(1,now);return;}
